@@ -1,0 +1,23 @@
+{
+  "DRONE0001": {
+    "battery": 85.8,
+    "status": "idle",
+    "id": "DRONE0001",
+    "lastSeen": 1784141574423,
+    "updated_at": 1784141574426
+  },
+  "DRONE0002": {
+    "battery": 81.8,
+    "status": "idle",
+    "id": "DRONE0002",
+    "lastSeen": 1784141574436,
+    "updated_at": 1784141574438
+  },
+  "DRONE0003": {
+    "battery": 78.8,
+    "status": "idle",
+    "id": "DRONE0003",
+    "lastSeen": 1784141574441,
+    "updated_at": 1784141574444
+  }
+}

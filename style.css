@@ -1,0 +1,715 @@
+:root {
+  --bg-start: #eff6ff;
+  --bg-end: #f8fafc;
+  --panel-bg: rgba(255, 255, 255, 0.002);
+  --panel-border: rgba(255, 255, 255, 0.18);
+  --panel-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  --accent: #4f46e5;
+  --accent-soft: #c7d2fe;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --text: #0f172a;
+  --muted: #475569;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: transparent;
+  overflow: hidden;
+}
+
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #f0f0f0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+#loadingScreen {
+  animation: fadeOut 1s ease-in-out 2s forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Professional enhancements */
+#dashboardBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 4px 8px;
+  margin-bottom: 0px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.008), rgba(30, 41, 59, 0.008));
+  border-top: 1px solid rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(25px);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.02), 0 -8px 30px rgba(0, 0, 0, 0.04);
+}
+
+#topBanner {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: calc(100% - 40px);
+  width: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(59, 130, 246, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  max-height: 32px;
+  overflow: hidden;
+  cursor: pointer;
+  backdrop-filter: blur(25px);
+}
+
+#topBanner.banner-expanded {
+  max-height: 140px;
+}
+
+#topBanner .banner-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+#topBanner .banner-subtitle {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  display: none;
+}
+
+#topBanner.banner-expanded .banner-subtitle {
+  display: inline;
+}
+
+#topBanner .banner-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.7rem;
+  margin-left: 4px;
+}
+
+#controls,
+#telemetry,
+#fleet,
+#fleetStatus,
+#analytics,
+#packages,
+#deliveryLogs,
+#weather,
+#alerts,
+#settings,
+#videoFeed,
+#advancedAnalytics,
+#emergency,
+#communication,
+#command {
+  animation: slideInUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 255, 255, 0.01);
+  border-radius: 10px;
+  box-shadow: none;
+  backdrop-filter: blur(25px);
+  padding: 2px 4px;
+  min-width: 140px;
+  max-width: 190px;
+  transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, max-height 0.3s ease;
+  max-height: 24px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.panel-expanded {
+  max-height: 350px !important;
+  cursor: default;
+}
+
+/* Panel expand indicator */
+.panel-collapsed::after {
+  content: "▼";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: transform 0.3s ease;
+}
+
+.panel-expanded::after {
+  content: "▲";
+  transform: translateY(-50%) rotate(0deg);
+}
+
+/* Quick status panel */
+.quick-panel {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 6px;
+  background: rgba(255,255,255,0.01);
+  border: 1px solid rgba(255,255,255,0.02);
+  border-radius: 10px;
+  font-size: 0.65rem;
+  min-width: 110px;
+  transition: all 0.3s ease;
+}
+
+.quick-panel:hover {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.05);
+}
+
+#controls:hover { background: rgba(79, 70, 229, 0.02); border-color: rgba(79, 70, 229, 0.3); }
+#telemetry:hover { background: rgba(59, 130, 246, 0.02); border-color: rgba(59, 130, 246, 0.3); }
+#fleet:hover { background: rgba(22, 163, 74, 0.02); border-color: rgba(22, 163, 74, 0.3); }
+#fleetStatus:hover { background: rgba(16, 185, 129, 0.02); border-color: rgba(16, 185, 129, 0.3); }
+#analytics:hover { background: rgba(245, 158, 11, 0.02); border-color: rgba(245, 158, 11, 0.3); }
+#packages:hover { background: rgba(245, 158, 11, 0.02); border-color: rgba(245, 158, 11, 0.3); }
+#deliveryLogs:hover { background: rgba(139, 92, 246, 0.02); border-color: rgba(139, 92, 246, 0.3); }
+#command:hover { background: rgba(239, 68, 68, 0.02); border-color: rgba(239, 68, 68, 0.3); }
+
+/* New panel hovers */
+#weather:hover { background: rgba(6, 182, 212, 0.02); border-color: rgba(6, 182, 212, 0.3); }
+#alerts:hover { background: rgba(245, 158, 11, 0.02); border-color: rgba(245, 158, 11, 0.3); }
+#settings:hover { background: rgba(139, 92, 246, 0.02); border-color: rgba(139, 92, 246, 0.3); }
+#videoFeed:hover { background: rgba(34, 197, 94, 0.02); border-color: rgba(34, 197, 94, 0.3); }
+#advancedAnalytics:hover { background: rgba(59, 130, 246, 0.02); border-color: rgba(59, 130, 246, 0.3); }
+#emergency:hover { background: rgba(239, 68, 68, 0.02); border-color: rgba(239, 68, 68, 0.3); }
+#communication:hover { background: rgba(168, 85, 247, 0.02); border-color: rgba(168, 85, 247, 0.3); }
+
+/* Color-coded panels */
+#controls { border-color: var(--accent); }
+#telemetry { border-color: #3b82f6; } /* Blue */
+#fleet { border-color: var(--success); }
+#fleetStatus { border-color: #10b981; } /* Emerald */
+#analytics { border-color: var(--warning); }
+#packages { border-color: #f59e0b; } /* Amber */
+#deliveryLogs { border-color: #8b5cf6; } /* Violet */
+#command { border-color: #ef4444; } /* Red */
+
+/* New panels */
+#weather { border-color: #06b6d4; } /* Cyan */
+#alerts { border-color: #f59e0b; } /* Amber */
+#settings { border-color: #8b5cf6; } /* Purple */
+#videoFeed { border-color: #22c55e; } /* Green */
+#advancedAnalytics { border-color: #3b82f6; } /* Blue */
+#emergency { border-color: #ef4444; } /* Red */
+#communication { border-color: #a855f7; } /* Purple */
+
+#controls {
+  min-width: 160px;
+}
+
+#packages {
+  min-width: 200px;
+  max-width: 260px;
+}
+
+#deliveryLogs {
+  min-width: 200px;
+  max-width: 260px;
+}
+
+#fleet {
+  max-height: 120px;
+  overflow: auto;
+}
+
+#packages {
+  max-height: 140px;
+  overflow: auto;
+}
+
+#deliveryLogs {
+  max-height: 150px;
+  overflow: auto;
+}
+
+#packageForm {
+  margin-bottom: 6px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.8);
+  font-size: 0.65rem;
+}
+
+#packageForm input,
+#packageForm select,
+#packageForm button {
+  font-size: 0.65rem;
+}
+
+#packageForm input,
+#packageForm select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+#packageForm button {
+  width: 26%;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+#commLog {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 0.65rem;
+}
+
+#controls,
+#command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+}
+
+#controls button {
+  background: linear-gradient(135deg, var(--accent), #6366f1);
+  padding: 2px 4px;
+  font-size: 0.55rem;
+  min-width: 50px;
+}
+
+.alert-item {
+  margin-bottom: 1px;
+  font-size: 0.65rem;
+  animation: slideInUp 0.3s ease-out;  
+  padding: 1px 0;
+}
+
+#settings label {
+  display: block;
+  margin-bottom: 1px;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+#settings input[type="checkbox"] {
+  margin-right: 2px;
+}
+
+#settings button {
+  margin-top: 2px;
+  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  padding: 2px 4px;
+  font-size: 0.55rem;
+}
+
+.comm-entry {
+  margin-bottom: 1px;
+  padding: 0px 0;
+  font-size: 0.65rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 2px;
+}
+
+#emergency button {
+  margin-bottom: 1px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 4px;
+  font-size: 0.55rem;
+}
+
+/* Panel icons */
+#controls b:before { content: "🎛️ "; }
+#telemetry b:before { content: "📊 "; }
+#fleet b:before { content: "🚁 "; }
+#fleetStatus b:before { content: "📈 "; }
+#analytics b:before { content: "📉 "; }
+#packages b:before { content: "📦 "; }
+#deliveryLogs b:before { content: "📋 "; }
+#weather b:before { content: "🌤️ "; }
+#alerts b:before { content: "🚨 "; }
+#settings b:before { content: "⚙️ "; }
+#videoFeed b:before { content: "📹 "; }
+#advancedAnalytics b:before { content: "📊 "; }
+#emergency b:before { content: "🚨 "; }
+#communication b:before { content: "📡 "; }
+/* Enhanced animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+#alerts .alert-item {
+  animation: slideInUp 0.3s ease-out, pulse 2s infinite;
+}
+
+#emergency {
+  animation: slideInUp 0.6s ease-out;
+  position: relative;
+}
+
+#emergency::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #ef4444, #f59e0b, #22c55e, #3b82f6);
+  border-radius: 20px;
+  z-index: -1;
+  opacity: 0.3;
+  animation: pulse 3s infinite;
+}
+
+/* Professional loading states */
+#cameraView {
+  position: relative;
+  overflow: hidden;
+}
+
+#cameraView::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+#telemetry,
+#fleet,
+#fleetStatus,
+#analytics,
+#packages,
+#deliveryLogs,
+#command {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+#fleetStatus span,
+#analytics span,
+#packages span,
+#deliveryLogs span,
+#command span {
+  display: inline-block;
+}
+
+#packages #packageForm {
+  margin-bottom: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#packages #packageForm input,
+#packages #packageForm select,
+#packages #packageForm button {
+  box-sizing: border-box;
+}
+
+#packages #packageForm input,
+#packages #packageForm select {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #0f172a;
+}
+
+#packages #packageForm button {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #fff;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  #dashboardBar {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 6px;
+    padding-bottom: 80px;
+  }
+
+  #controls,
+  #telemetry,
+  #fleet,
+  #fleetStatus,
+  #analytics,
+  #packages,
+  #deliveryLogs,
+  #weather,
+  #alerts,
+  #settings,
+  #videoFeed,
+  #advancedAnalytics,
+  #emergency,
+  #communication,
+  #command {
+    min-width: calc(50% - 20px);
+    max-width: calc(50% - 20px);
+  }
+}
+
+@media (max-width: 768px) {
+  #dashboardBar {
+    bottom: 0;
+    padding: 10px;
+    gap: 10px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  #topBanner {
+    top: 8px;
+    padding: 10px 14px;
+  }
+
+  #controls,
+  #telemetry,
+  #fleet,
+  #fleetStatus,
+  #analytics,
+  #packages,
+  #deliveryLogs,
+  #weather,
+  #alerts,
+  #settings,
+  #videoFeed,
+  #advancedAnalytics,
+  #emergency,
+  #communication,
+  #command {
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  #controls button,
+  #command button {
+    flex: 1 1 100%;
+  }
+}
+b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+button {
+  margin: 1px 1px 0 0;
+  padding: 2px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  color: #ffffff;
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  opacity: 0.85;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.12);
+  opacity: 1;
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+#controls,
+#command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+}
+
+#controls button,
+#command button {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 50px;
+  padding: 2px 4px;
+  font-size: 0.55rem;
+}
+
+#telemetry,
+#fleet,
+#fleetStatus,
+#analytics,
+#packages,
+#deliveryLogs,
+#command {
+  font-size: 0.70rem;
+  line-height: 1.4;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+#droneList li,
+#packageList li {
+  padding: 3px 4px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.65rem;
+}
+
+#droneList li:hover,
+#packageList li:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+#logContent div {
+  padding: 3px 4px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.16s ease;
+  font-size: 0.65rem;
+}
+
+#logContent div:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+#fleetStatus span,
+#analytics span,
+#packages span,
+#deliveryLogs span,
+#command span {
+  display: inline-block;
+}
+
+@media (max-width: 1200px) {
+  #controls,
+  #telemetry,
+  #fleet,
+  #fleetStatus,
+  #analytics,
+  #packages,
+  #deliveryLogs,
+  #command {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 92vw;
+  }
+
+  #controls { bottom: 16px; }
+  #telemetry { bottom: 120px; }
+  #fleet { bottom: 260px; }
+  #fleetStatus { bottom: 520px; }
+  #analytics { bottom: 620px; }
+  #packages { bottom: 720px; }
+  #deliveryLogs { bottom: 860px; }
+  #command { bottom: 1030px; }
+}
+
+@media (max-width: 768px) {
+  #controls,
+  #telemetry,
+  #fleet,
+  #fleetStatus,
+  #analytics,
+  #packages,
+  #deliveryLogs,
+  #command {
+    max-width: 96vw;
+    padding: 8px;
+  }
+
+  button {
+    width: 100%;
+    margin: 3px 0 0 0;
+    padding: 3px 4px;
+  }
+}

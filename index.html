@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Drone Mission Planner</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="style.css"/>
+
+</head>
+
+<body>
+
+<div id="loadingScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; color: white; font-size: 24px; font-weight: bold;">
+  <div style="text-align: center;">
+    <div style="width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+    Loading Drone Ground Station...
+    <div style="margin-top: 14px; font-size: 16px; color: rgba(255,255,255,0.85);">Welcome to SCINTILLATING TECHNOLOGIES AND AEROSPACE COMPANY.</div>
+  </div>
+</div>
+
+<div id="topBanner" title="Click to expand or collapse the dashboard banner">
+  <div class="banner-left">
+    <div class="banner-title">🚁 Drone Station</div>
+    <div class="banner-subtitle">Live operations dashboard</div>
+  </div>
+  <div class="banner-right">
+    <span class="banner-pill">Active: <strong id="bannerActive">0</strong></span>
+    <span class="banner-pill">Map 🗺️</span>
+  </div>
+</div>
+
+<div id="dashboardBar">
+  <!-- QUICK STATUS BAR -->
+  <div id="quickStatus" class="quick-panel" title="Click to refresh status">
+    <span style="color: #16a34a;">●</span> <span id="statusText">Ready</span>
+  </div>
+
+  <div id="controls">
+    <button onclick="setHome()">Set Home</button>
+    <button onclick="clearMission()">Clear Mission</button>
+    <button onclick="exportMission()">Export Mission</button>
+  </div>
+
+<!-- TELEMETRY -->
+<div id="telemetry">
+
+<b>Drone Telemetry</b><br>
+
+Altitude: <span id="alt" style="cursor:pointer; text-decoration:underline;" onclick="showAltitudeDetails()">0</span> m<br>
+Speed: <span id="spd" style="cursor:pointer; text-decoration:underline;" onclick="showSpeedDetails()">0</span> m/s<br>
+Battery: <span id="bat" style="cursor:pointer; text-decoration:underline;" onclick="showBatteryDetails()">0</span> %<br>
+Heading: <span id="hdg" style="cursor:pointer; text-decoration:underline;" onclick="showHeadingDetails()">0</span> °
+<br>
+Mission: <span id="missionProgress" style="cursor:pointer; text-decoration:underline;" onclick="showMissionDetails()">Idle</span>
+
+</div>
+
+<!-- FLEET LIST -->
+<div id="fleet">
+
+<b>Drone Fleet</b><br>
+
+<ul id="droneList"></ul>
+
+</div>
+
+<div id="fleetStatus">
+
+<b>Fleet Status</b><br>
+
+Total drones: <span id="totalDrones" style="cursor:pointer; text-decoration:underline;" onclick="zoomToAllDrones()">0</span><br>
+Active missions: <span id="activeMissions" style="cursor:pointer; text-decoration:underline; color:blue;" onclick="zoomToActiveDrones()">0</span><br>
+Idle drones: <span id="idleDrones" style="cursor:pointer; text-decoration:underline; color:green;" onclick="zoomToIdleDrones()">0</span><br>
+Warnings: <span id="collisionWarnings" style="cursor:pointer; text-decoration:underline; color:red;" onclick="showCollisionWarnings()">0</span>
+
+</div>
+
+<div id="analytics">
+
+<b>Delivery Analytics</b><br>
+
+Total packages: <span id="totalPackages" style="cursor:pointer; text-decoration:underline;" onclick="showPackageDetails()">0</span><br>
+Delivered: <span id="deliveredPackages" style="cursor:pointer; text-decoration:underline; color:green;" onclick="showDeliveredPackages()">0</span><br>
+Success rate: <span id="successRate" style="cursor:pointer; text-decoration:underline;" onclick="showDeliveryStats()">0%</span><br>
+Avg delivery time: <span id="avgDeliveryTime" style="cursor:pointer; text-decoration:underline;" onclick="showDeliveryTimeStats()">0 min</span>
+
+</div>
+
+<div id="packages">
+
+<b>Package Queue</b><br>
+
+<div id="packageForm">
+  <input type="text" id="packageDesc" placeholder="Description" style="width: 100%; margin-bottom: 4px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+  <input type="number" id="packageWeight" placeholder="Weight (kg)" step="0.1" style="width: 48%; margin-right: 4%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+  <select id="packagePriority" style="width: 48%; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="normal">Normal</option>
+    <option value="high">High</option>
+    <option value="urgent">Urgent</option>
+  </select><br>
+  <input type="text" id="packageCustomer" placeholder="Customer" style="width: 70%; margin-right: 4%; margin-top: 4px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+  <button onclick="addPackageFromForm()" style="width: 26%; padding: 5px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer;">Add</button>
+</div>
+
+<ul id="packageList"></ul>
+
+</div>
+
+<div id="deliveryLogs">
+
+<b>Delivery Logs</b><br>
+
+<div id="logContent"></div>
+
+</div>
+
+<!-- WEATHER PANEL -->
+<div id="weather">
+
+<b>Weather Conditions</b><br>
+
+<div id="weatherInfo">
+  <div>Temperature: <span id="temp">--</span>°C</div>
+  <div>Wind: <span id="wind">--</span> km/h</div>
+  <div>Visibility: <span id="visibility">--</span> km</div>
+  <div>Conditions: <span id="conditions">--</span></div>
+</div>
+
+</div>
+
+<!-- ALERTS PANEL -->
+<div id="alerts">
+
+<b>System Alerts</b><br>
+
+<div id="alertContent">
+  <div class="alert-item" style="color: #16a34a;">✓ System operational</div>
+</div>
+
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settings">
+
+<b>System Settings</b><br>
+
+<label><input type="checkbox" id="soundEnabled" checked> Sound notifications</label><br>
+<label><input type="checkbox" id="autoUpdate" checked> Auto-update analytics</label><br>
+<label><input type="checkbox" id="showTrails" checked> Show flight trails</label><br>
+<label><input type="checkbox" id="darkMode"> Dark mode</label><br><br>
+<button onclick="saveSettings()">Save Settings</button>
+
+</div>
+
+<!-- VIDEO FEED PANEL -->
+<div id="videoFeed">
+
+<b>Live Camera Feed</b><br>
+
+<div id="cameraView" style="width: 100%; height: 120px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem;">
+  <div style="text-align: center;">
+    <div>📹 Camera Feed</div>
+    <div id="feedStatus" style="font-size: 0.8rem; color: #16a34a;">Active</div>
+  </div>
+</div>
+
+</div>
+
+<!-- ADVANCED ANALYTICS -->
+<div id="advancedAnalytics">
+
+<b>Performance Metrics</b><br>
+
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+  <span>Efficiency:</span>
+  <span id="efficiencyScore">95%</span>
+</div>
+<div style="width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-bottom: 12px;">
+  <div id="efficiencyBar" style="width: 95%; height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 4px;"></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+  <span>Reliability:</span>
+  <span id="reliabilityScore">98%</span>
+</div>
+<div style="width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-bottom: 12px;">
+  <div id="reliabilityBar" style="width: 98%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 4px;"></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+  <span>Safety:</span>
+  <span id="safetyScore">100%</span>
+</div>
+<div style="width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px;">
+  <div id="safetyBar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px;"></div>
+</div>
+
+</div>
+
+<!-- EMERGENCY CONTROLS -->
+<div id="emergency">
+
+<b>Emergency Controls</b><br>
+
+<button onclick="emergencyStop()" style="background: linear-gradient(135deg, #ef4444, #dc2626); margin-bottom: 8px; width: 100%;">EMERGENCY STOP ALL</button>
+<button onclick="returnAllHome()" style="background: linear-gradient(135deg, #f59e0b, #d97706); margin-bottom: 8px; width: 100%;">Return All Home</button>
+<button onclick="activateSafeMode()" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); width: 100%;">Safe Mode</button>
+
+</div>
+
+<!-- COMMUNICATION LOGS -->
+<div id="communication">
+
+<b>Communication Logs</b><br>
+
+<div id="commLog">
+  <div class="comm-entry">[14:30:22] System: All systems nominal</div>
+  <div class="comm-entry">[14:29:45] Drone-1: Mission waypoint reached</div>
+  <div class="comm-entry">[14:28:12] Control: Weather update received</div>
+</div>
+
+</div>
+
+<div id="command">
+
+<b>Drone Commands</b><br>
+
+Selected: <span id="selectedDrone">None</span><br><br>
+
+<button onclick="assignPackage()">Assign Package</button>
+<button onclick="startMission()">Start Mission</button>
+<button onclick="abortMission()">Abort</button>
+<button onclick="returnHome()">RTH</button>
+<button onclick="landDrone()">Land</button>
+
+</div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+let socket = null;
+const socketUrl = (window.location.origin && window.location.origin !== 'null')
+  ? window.location.origin
+  : 'http://localhost:3000';
+
+try {
+  if (window.io) {
+    socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true
+    });
+  }
+} catch (err) {
+  console.warn('Socket.IO initialization failed:', err);
+}
+var selectedDrone = null;
+
+var map = L.map('map').setView([9.0820, 8.6753], 6);
+
+var droneIcon = L.icon({
+iconUrl:'icons/drone.png',
+iconSize:[32,32],
+iconAnchor:[16,16],
+popupAnchor:[0,-16]
+});
+
+var drones = {};
+var droneTrails = {};
+var droneRadar = {};
+var waypoints = [];
+var dronePositions = {};
+var dronePositions = {};
+var droneBattery = {};
+var droneMissions = {};
+var droneReturningHome = {};
+var collisionCount = 0;
+var droneSpeed = 0.05; 
+var highlightedDrone = null;
+
+// Package management
+var packages = [];
+var packageIdCounter = 1;
+var packageStatuses = {}; // 'queued', 'assigned', 'in_transit', 'delivered', 'failed'
+var packageDestinations = {};
+var packageAssignments = {}; // droneId -> packageId
+var packageDetails = {}; // packageId -> {description, weight, priority, customer, eta}
+var deliveryLogs = []; // Track all delivery events
+
+function selectDrone(id){
+
+selectedDrone = id;
+
+document.getElementById("selectedDrone").innerText = id;
+
+// Fade all drones
+for (var droneId in drones) {
+  drones[droneId].setOpacity(0.6);
+}
+
+// Make selected drone bold (full opacity)
+drones[id].setOpacity(1);
+
+/* ZOOM TO DRONE */
+map.flyTo(drones[id].getLatLng(),10);
+
+/* OPEN POPUP */
+drones[id].openPopup();
+}
+
+var terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+attribution:'Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: <a href="https://opentopomap.org">OpenTopoMap</a>',
+subdomains:['a','b','c'],
+maxZoom:17,
+detectRetina:true
+});
+
+var streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+attribution:'© OpenStreetMap contributors',
+maxZoom:19,
+detectRetina:true
+});
+
+var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+maxZoom:19
+});
+
+streetLayer.addTo(map);
+
+L.control.layers({
+  "Terrain": terrainLayer,
+  "Street": streetLayer,
+  "Satellite": satelliteLayer
+}, null, {position:'topright'}).addTo(map);
+
+var waypointMarkers = [];
+
+window.addEventListener('load', function() {
+  var loader = document.getElementById('loadingScreen');
+  if (loader) {
+    loader.style.display = 'none';
+  }
+  map.invalidateSize();
+  setTimeout(() => map.invalidateSize(), 1000);
+
+  // Load and apply settings
+  loadSettingsIntoUI();
+});
+
+function loadSettingsIntoUI() {
+  var settings = getSettings();
+
+  // Load settings into form elements
+  var soundEnabled = document.getElementById('soundEnabled');
+  var autoUpdate = document.getElementById('autoUpdate');
+  var showTrails = document.getElementById('showTrails');
+  var darkMode = document.getElementById('darkMode');
+
+  if (soundEnabled) soundEnabled.checked = settings.soundEnabled !== false;
+  if (autoUpdate) autoUpdate.checked = settings.autoUpdate !== false;
+  if (showTrails) showTrails.checked = settings.showTrails !== false;
+  if (darkMode) darkMode.checked = settings.darkMode === true;
+
+  // Apply settings
+  applySettings(settings);
+}
+
+var routeLine = L.polyline([],{
+  color:'blue',
+  weight:3
+}).addTo(map);
+
+var home = null;
+var homeMarker = null;
+
+var geofenceZones = [];
+var obstacleZones = [];
+
+/* LOAD GEOFENCE */
+
+fetch("nigeria_geofence.json")
+.then(response => response.json())
+.then(data => {
+
+data.zones.forEach(zone => {
+
+geofenceZones.push(zone);
+
+L.circle([zone.lat, zone.lon],{
+radius:zone.radius_m,
+color:'red',
+interactive:false
+}).addTo(map);
+
+});
+
+data.obstacles.forEach(obs => {
+
+obstacleZones.push(obs);
+
+L.circle([obs.lat, obs.lon],{
+radius:obs.radius_m,
+color:'orange',
+interactive:false
+}).addTo(map);
+
+});
+
+// Add sample packages after geofence loads
+setTimeout(() => {
+  addPackage(9.1, 8.7, 'Medical supplies', 2, 'high', 'City Hospital');
+  addPackage(9.15, 8.75, 'Food delivery', 1, 'normal', 'Restaurant Chain');
+  addPackage(8.95, 8.85, 'Electronics', 1.5, 'normal', 'Tech Store');
+  addPackage(9.05, 8.65, 'Documents', 0.5, 'urgent', 'Law Firm');
+}, 1000);
+
+});
+
+function isRestricted(lat,lon){
+
+var point = [lat,lon];
+
+/* CHECK GEOFENCE ZONES */
+
+for(var i=0;i<geofenceZones.length;i++){
+
+var zone = geofenceZones[i];
+
+var distance = map.distance(point,[zone.lat,zone.lon]);
+
+if(distance < zone.radius_m){
+return "Restricted Zone";
+}
+
+}
+
+/* CHECK OBSTACLES */
+
+for(var i=0;i<obstacleZones.length;i++){
+
+var obs = obstacleZones[i];
+
+var distance = map.distance(point,[obs.lat,obs.lon]);
+
+if(distance < obs.radius_m){
+return "Obstacle Zone";
+}
+
+}
+
+return null;
+
+}
+
+function adjustWaypoint(lat,lon){
+
+var point = [lat,lon];
+
+/* CHECK GEOFENCE ZONES */
+
+for(var i=0;i<geofenceZones.length;i++){
+
+var zone = geofenceZones[i];
+
+var distance = map.distance(point,[zone.lat,zone.lon]);
+
+if(distance < zone.radius_m){
+
+var angle = Math.random() * Math.PI * 2;
+
+lat = zone.lat + Math.cos(angle) * (zone.radius_m/111320);
+lon = zone.lon + Math.sin(angle) * (zone.radius_m/111320);
+
+}
+
+}
+
+/* CHECK OBSTACLES */
+
+for(var i=0;i<obstacleZones.length;i++){
+
+var obs = obstacleZones[i];
+
+var distance = map.distance(point,[obs.lat,obs.lon]);
+
+if(distance < obs.radius_m){
+
+var angle = Math.random() * Math.PI * 2;
+
+lat = obs.lat + Math.cos(angle) * (obs.radius_m/111320);
+lon = obs.lon + Math.sin(angle) * (obs.radius_m/111320);
+
+}
+
+}
+
+return [lat,lon];
+
+}
+
+function findAlternativeWaypoint(currentLat, currentLon, targetLat, targetLon, restrictionType) {
+  // Simple obstacle avoidance - try moving perpendicular to the obstacle
+  var dx = targetLon - currentLon;
+  var dy = targetLat - currentLat;
+
+  // Rotate 90 degrees to go around obstacle
+  var newDx = -dy;
+  var newDy = dx;
+
+  // Normalize and scale
+  var magnitude = Math.sqrt(newDx*newDx + newDy*newDy);
+  if (magnitude > 0) {
+    newDx = newDx / magnitude * 0.01; // Small step
+    newDy = newDy / magnitude * 0.01;
+  }
+
+  var alternativeLat = currentLat + newDy;
+  var alternativeLon = currentLon + newDx;
+
+  // Check if alternative is also restricted
+  if (!isRestricted(alternativeLat, alternativeLon)) {
+    return [alternativeLat, alternativeLon];
+  }
+
+  // Try the other direction
+  newDx = dy;
+  newDy = -dx;
+
+  magnitude = Math.sqrt(newDx*newDx + newDy*newDy);
+  if (magnitude > 0) {
+    newDx = newDx / magnitude * 0.01;
+    newDy = newDy / magnitude * 0.01;
+  }
+
+  alternativeLat = currentLat + newDy;
+  alternativeLon = currentLon + newDx;
+
+  if (!isRestricted(alternativeLat, alternativeLon)) {
+    return [alternativeLat, alternativeLon];
+  }
+
+  return null; // No alternative found
+}
+
+/* ADD WAYPOINTS */
+
+map.on('click',function(e){
+
+var lat = e.latlng.lat;
+var lon = e.latlng.lng;
+
+var adjusted = adjustWaypoint(lat,lon);
+
+lat = adjusted[0];
+lon = adjusted[1];
+
+var waypoint = [lat,lon];
+
+waypoints.push(waypoint);
+
+var marker = L.marker(waypoint,{draggable:true}).addTo(map);
+waypointMarkers.push(marker);
+
+marker._wpIndex = waypoints.length - 1;
+
+marker.bindPopup("Waypoint " + waypoints.length).openPopup();
+
+marker.on("drag",function(e){
+
+var index = marker._wpIndex;
+
+var newPos = e.target.getLatLng();
+
+waypoints[index] = [newPos.lat,newPos.lng];
+
+routeLine.setLatLngs(waypoints);
+
+});
+
+routeLine.setLatLngs(waypoints);
+
+console.log("Waypoint list:", waypoints);
+
+});
+
+function addPackageFromForm() {
+  var desc = document.getElementById('packageDesc').value;
+  var weight = parseFloat(document.getElementById('packageWeight').value) || 1;
+  var priority = document.getElementById('packagePriority').value;
+  var customer = document.getElementById('packageCustomer').value || 'Unknown';
+  
+  if (!desc.trim()) {
+    alert('Please enter a package description');
+    return;
+  }
+  
+  // Get current map center for package location
+  var center = map.getCenter();
+  addPackage(center.lat, center.lng, desc, weight, priority, customer);
+  
+  // Clear form
+  document.getElementById('packageDesc').value = '';
+  document.getElementById('packageWeight').value = '';
+  document.getElementById('packagePriority').value = 'normal';
+  document.getElementById('packageCustomer').value = '';
+  
+  alert('Package added successfully!');
+}
+
+
+/* SET HOME LOCATION */
+
+function setHome(){
+if (homeMarker) {
+  map.removeLayer(homeMarker);
+  homeMarker = null;
+  home = null;
+}
+
+map.once('click', function(e){
+home = [e.latlng.lat, e.latlng.lng];
+
+homeMarker = L.marker(home,{
+draggable:true,
+icon: L.icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#ff0000" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>'),
+  iconSize: [24, 24],
+  iconAnchor: [12, 24]
+})
+}).addTo(map);
+
+homeMarker.on("drag", function(e){
+var pos = e.target.getLatLng();
+home = [pos.lat, pos.lng];
+console.log("Home moved:", home);
+});
+
+homeMarker.bindPopup("🏠 HOME BASE").openPopup();
+
+console.log("Home set at:", home);
+});
+
+}
+
+
+/* CLEAR MISSION */
+
+function clearMission(){
+
+waypoints = [];
+routeLine.setLatLngs([]);
+
+waypointMarkers.forEach(function(marker){
+  map.removeLayer(marker);
+});
+waypointMarkers = [];
+
+}
+
+
+/* EXPORT MISSION */
+
+function exportMission(){
+
+var mission = {
+home: home,
+waypoints: waypoints
+};
+
+console.log("MISSION DATA:", mission);
+
+alert("Mission exported. Check console.");
+
+}
+
+
+/* UPDATE DRONES */
+
+function updateDrone(id,lat,lon,alt,spd,bat,hdg){
+
+if(!drones[id]){
+
+var marker = L.marker([lat,lon],{
+icon:droneIcon,
+rotationAngle: hdg,
+rotationOrigin: "center"
+}).addTo(map);
+
+marker.bindPopup(id);
+
+marker.on("click", function(){
+selectDrone(id);
+});
+
+drones[id] = marker;
+
+droneRadar[id] = L.circle([lat,lon],{
+radius:200,
+color:"cyan",
+weight:1,
+fill:false,
+interactive:false
+}).addTo(map);
+
+/* CREATE TRAIL LINE */
+droneTrails[id] = L.polyline([],{
+color:'green',
+weight:2,
+smoothFactor:1
+}).addTo(map);
+
+/* ADD TO FLEET LIST */
+
+var list = document.getElementById("droneList");
+
+var item = document.createElement("li");
+
+item.id = "fleet-" + id; // Give each item a unique ID
+item.innerText = id + " (Battery: " + (droneBattery[id] || bat) + "%)";
+
+item.style.cursor = "pointer";
+
+item.onclick = function(){
+selectDrone(id);
+};
+
+list.appendChild(item);
+
+}else{
+
+drones[id].setLatLng([lat,lon]);
+droneRadar[id].setLatLng([lat,lon]);
+
+/* ADD POSITION TO TRAIL */
+
+var trail = droneTrails[id];
+
+trail.addLatLng([lat,lon]);
+
+if(trail.getLatLngs().length > 50){
+trail.setLatLngs(trail.getLatLngs().slice(-50));
+}
+
+}
+
+var old = dronePositions[id];
+
+if(old){
+
+var dy = lat - old[0];
+var dx = lon - old[1];
+
+hdg = (Math.atan2(dx,dy) * 180 / Math.PI + 360) % 360;
+
+}
+
+dronePositions[id] = [lat,lon];
+
+/* UPDATE TELEMETRY */
+
+if(droneBattery[id] === undefined){
+    droneBattery[id] = bat;
+}
+
+if(selectedDrone === id){
+
+document.getElementById("alt").innerText = alt;
+document.getElementById("spd").innerText = spd;
+const batElement = document.getElementById("bat");
+const batValue = droneBattery[id].toFixed(1);
+batElement.innerText = batValue;
+// Color code battery: red <20%, yellow <50%, green >=50%
+if (batValue < 20) batElement.style.color = '#ef4444';
+else if (batValue < 50) batElement.style.color = '#f59e0b';
+else batElement.style.color = '#16a34a';
+document.getElementById("hdg").innerText = hdg;
+
+}
+
+}
+
+function checkCollisions(){
+
+var ids = Object.keys(dronePositions);
+var collisionWarnings = [];
+var settings = getSettings();
+
+for(let i=0;i<ids.length;i++){
+
+for(let j=i+1;j<ids.length;j++){
+
+var a = dronePositions[ids[i]];
+var b = dronePositions[ids[j]];
+
+var distance = map.distance(a,b);
+
+// Current collision detection
+if(distance < (settings.collisionThreshold || 100)){
+/* AUTO SEPARATION */
+
+var dx = b[1] - a[1];
+var dy = b[0] - a[0];
+
+var adjust = 0.02;
+
+// More sophisticated separation - separate based on relative velocity
+var speedA = droneSpeed || 0.01;
+var speedB = droneSpeed || 0.01;
+var relativeSpeed = (speedA + speedB) / 2;
+
+adjust = Math.min(adjust, distance / 1000); // Don't over-correct
+
+dronePositions[ids[i]][0] -= dy * adjust;
+dronePositions[ids[i]][1] -= dx * adjust;
+
+dronePositions[ids[j]][0] += dy * adjust;
+dronePositions[ids[j]][1] += dx * adjust;
+
+/* UPDATE MARKERS */
+
+drones[ids[i]].setLatLng(dronePositions[ids[i]]);
+drones[ids[j]].setLatLng(dronePositions[ids[j]]);
+
+collisionCount++;
+collisionWarnings.push({
+  drones: [ids[i], ids[j]],
+  distance: Math.round(distance),
+  severity: distance < 50 ? 'critical' : 'warning'
+});
+
+console.warn(
+"⚠ COLLISION WARNING:",
+ids[i],
+"near",
+ids[j],
+"distance:",
+Math.round(distance),
+"meters"
+);
+
+addAlert(`Collision warning: ${ids[i]} and ${ids[j]} are ${Math.round(distance)}m apart!`, 'error');
+addCommLog(`Collision detected between ${ids[i]} and ${ids[j]}`, 'warning');
+
+}
+
+// Predictive collision detection (look ahead 30 seconds)
+var predictedCollision = predictCollision(ids[i], ids[j], 30);
+if (predictedCollision && predictedCollision.timeToCollision < 30) {
+  collisionWarnings.push({
+    drones: [ids[i], ids[j]],
+    timeToCollision: predictedCollision.timeToCollision,
+    severity: predictedCollision.timeToCollision < 10 ? 'critical' : 'warning',
+    type: 'predictive'
+  });
+
+  if (predictedCollision.timeToCollision < 15) {
+    addAlert(`Predicted collision: ${ids[i]} and ${ids[j]} in ${Math.round(predictedCollision.timeToCollision)}s!`, 'warning');
+    addCommLog(`Predicted collision between ${ids[i]} and ${ids[j]} in ${Math.round(predictedCollision.timeToCollision)}s`, 'warning');
+  }
+}
+
+}
+
+}
+
+// Update collision display
+updateCollisionWarnings(collisionWarnings);
+
+}
+
+function predictCollision(droneId1, droneId2, timeAheadSeconds = 30) {
+  var pos1 = dronePositions[droneId1];
+  var pos2 = dronePositions[droneId2];
+
+  if (!pos1 || !pos2) return null;
+
+  // Get current velocities (simplified - assuming constant speed/direction)
+  var speed1 = 0.01; // Default speed in degrees per update
+  var speed2 = 0.01;
+
+  // For drones on mission, use mission speed
+  if (droneMissions[droneId1]) speed1 = droneSpeed;
+  if (droneMissions[droneId2]) speed2 = droneSpeed;
+
+  // Calculate relative velocity
+  var dx = pos2[1] - pos1[1];
+  var dy = pos2[0] - pos1[0];
+  var distance = Math.sqrt(dx*dx + dy*dy);
+
+  if (distance === 0) return null; // Same position
+
+  // Relative velocity vector (simplified)
+  var relVx = 0; // Assuming drones are moving in random directions
+  var relVy = 0;
+
+  // Time to closest approach
+  var relSpeed = Math.sqrt(relVx*relVx + relVy*relVy);
+  if (relSpeed === 0) return null; // Not moving relative to each other
+
+  var timeToClosest = - (dx * relVx + dy * relVy) / (relSpeed * relSpeed);
+  var minDistance = Math.abs(dx * relVy - dy * relVx) / relSpeed;
+
+  if (timeToClosest < 0 || timeToClosest > timeAheadSeconds) return null;
+  if (minDistance > 100) return null; // Not close enough
+
+  return {
+    timeToCollision: timeToClosest,
+    minDistance: minDistance,
+    position: [
+      pos1[0] + relVy * timeToClosest,
+      pos1[1] + relVx * timeToClosest
+    ]
+  };
+}
+
+function updateCollisionWarnings(warnings) {
+  // Update UI with collision warnings
+  var collisionDisplay = document.getElementById("collisionWarnings");
+  if (collisionDisplay) {
+    var criticalCount = warnings.filter(w => w.severity === 'critical').length;
+    var warningCount = warnings.filter(w => w.severity === 'warning').length;
+
+    collisionDisplay.innerText = collisionCount;
+    collisionDisplay.style.color = criticalCount > 0 ? '#ef4444' : warningCount > 0 ? '#f59e0b' : '#16a34a';
+  }
+}
+
+function updateFleetStatus(){
+
+var total = Object.keys(drones).length;
+var active = Object.keys(droneMissions).length;
+var idle = total - active;
+
+document.getElementById("totalDrones").innerText = total;
+document.getElementById("activeMissions").innerText = active;
+document.getElementById("idleDrones").innerText = idle;
+document.getElementById("collisionWarnings").innerText = collisionCount;
+  document.getElementById("bannerActive").innerText = active;
+  
+  // Update mission timer if active
+  if (selectedDrone && droneMissions[selectedDrone]) {
+    const mission = droneMissions[selectedDrone];
+    if (mission.startTime) {
+      const elapsed = Math.floor((Date.now() - mission.startTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      const secStr = secs < 10 ? "0" + secs : secs;
+      document.getElementById("missionProgress").innerText = 
+        (mission.progress || 0) + "% [" + mins + "m" + secStr + "s]";
+    }
+  }
+}
+
+// Update delivery analytics
+function updateAnalytics() {
+  var total = packages.length;
+  var delivered = packages.filter(pkg => packageStatuses[pkg] === 'delivered').length;
+  var successRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+  
+  // Calculate average delivery time
+  var deliveryTimes = [];
+  packages.forEach(pkg => {
+    if (packageStatuses[pkg] === 'delivered' && packageDetails[pkg].deliveredAt) {
+      var created = packageDetails[pkg].created;
+      var deliveredAt = packageDetails[pkg].deliveredAt;
+      var timeDiff = (deliveredAt - created) / 1000 / 60; // minutes
+      deliveryTimes.push(timeDiff);
+    }
+  });
+  
+  var avgTime = deliveryTimes.length > 0 ? 
+    Math.round(deliveryTimes.reduce((a,b) => a+b) / deliveryTimes.length) : 0;
+  
+  document.getElementById('totalPackages').innerText = total;
+  document.getElementById('deliveredPackages').innerText = delivered;
+  document.getElementById('successRate').innerText = successRate + '%';
+  document.getElementById('avgDeliveryTime').innerText = avgTime + ' min';
+}
+
+// Package management functions
+function addPackage(lat, lon, description, weight = 1, priority = 'normal', customer = 'Unknown') {
+  var packageId = 'PKG' + packageIdCounter++;
+  packages.push(packageId);
+  packageStatuses[packageId] = 'queued';
+  packageDestinations[packageId] = [lat, lon];
+  packageDetails[packageId] = {
+    description: description,
+    weight: weight,
+    priority: priority,
+    customer: customer,
+    created: Date.now(),
+    eta: null
+  };
+  
+  // Add visual marker for package destination
+  var marker = L.marker([lat, lon]).addTo(map);
+  marker.bindPopup('Package ' + packageId + ': ' + description + '<br>Priority: ' + priority + '<br>Customer: ' + customer);
+  
+  updatePackageList();
+  logDeliveryEvent('Package created: ' + packageId + ' for ' + customer);
+  console.log('Package added:', packageId, 'at', [lat, lon]);
+}
+
+function assignPackageToDrone(packageId, droneId) {
+  if (packageStatuses[packageId] === 'queued' && !packageAssignments[droneId]) {
+    packageStatuses[packageId] = 'assigned';
+    packageAssignments[droneId] = packageId;
+    
+    // Calculate ETA
+    calculateETA(packageId, droneId);
+    
+    updatePackageList();
+    logDeliveryEvent('Package ' + packageId + ' assigned to ' + droneId);
+    console.log('Package', packageId, 'assigned to', droneId);
+  }
+}
+
+function updatePackageStatus(packageId, status) {
+  packageStatuses[packageId] = status;
+  updatePackageList();
+  
+  if (status === 'delivered') {
+    packageDetails[packageId].deliveredAt = Date.now();
+    // Remove assignment
+    for (var droneId in packageAssignments) {
+      if (packageAssignments[droneId] === packageId) {
+        delete packageAssignments[droneId];
+        break;
+      }
+    }
+    console.log('Package', packageId, 'delivered successfully!');
+    addAlert(`Package ${packageId} delivered successfully!`, 'success');
+    playSound('delivery');
+    addCommLog(`Package ${packageId} delivery confirmed`, 'drone');
+  }
+}
+
+function updatePackageList() {
+  var list = document.getElementById('packageList');
+  list.innerHTML = '';
+  
+  packages.forEach(function(packageId) {
+    var item = document.createElement('li');
+    var status = packageStatuses[packageId];
+    var details = packageDetails[packageId];
+    var assignedDrone = '';
+    
+    for (var droneId in packageAssignments) {
+      if (packageAssignments[droneId] === packageId) {
+        assignedDrone = ' (' + droneId + ')';
+        break;
+      }
+    }
+    
+    var etaText = details.eta ? ' ETA: ' + details.eta.toLocaleTimeString() : '';
+    item.innerText = packageId + ': ' + details.description + ' [' + status + ']' + assignedDrone + etaText;
+    
+    // Make package clickable to zoom to destination
+    item.style.cursor = 'pointer';
+    item.title = 'Click to zoom to package destination';
+    item.onclick = function() {
+      if (packageDestinations[packageId]) {
+        var dest = packageDestinations[packageId];
+        map.flyTo(dest, 15);
+        
+        // Find and open the package marker popup
+        map.eachLayer(function(layer) {
+          if (layer instanceof L.Marker && layer.getLatLng() && 
+              layer.getLatLng().lat === dest[0] && layer.getLatLng().lng === dest[1]) {
+            layer.openPopup();
+          }
+        });
+      }
+    };
+    
+    // Color coding based on priority and status
+    if (status === 'delivered') {
+      item.style.color = 'green';
+    } else if (status === 'failed') {
+      item.style.color = 'red';
+    } else if (details.priority === 'urgent') {
+      item.style.color = 'orange';
+      item.style.fontWeight = 'bold';
+    } else if (details.priority === 'high') {
+      item.style.color = 'blue';
+    }
+    
+    list.appendChild(item);
+  });
+}
+
+// Calculate ETA for package delivery
+function calculateETA(packageId, droneId) {
+  if (!droneId || !packageDestinations[packageId]) return null;
+  
+  var dest = packageDestinations[packageId];
+  var dronePos = dronePositions[droneId];
+  if (!dronePos) return null;
+  
+  var distance = map.distance(dronePos, dest); // meters
+  var speed = 12; // m/s average speed
+  var timeSeconds = distance / speed;
+  
+  var eta = new Date();
+  eta.setSeconds(eta.getSeconds() + timeSeconds);
+  
+  packageDetails[packageId].eta = eta;
+  return eta;
+}
+
+// Log delivery events
+function logDeliveryEvent(message) {
+  var timestamp = new Date().toLocaleString();
+  deliveryLogs.push(timestamp + ': ' + message);
+  
+  // Keep only last 50 logs
+  if (deliveryLogs.length > 50) {
+    deliveryLogs.shift();
+  }
+  
+  updateDeliveryLogs();
+}
+
+// Update delivery logs display
+function updateDeliveryLogs() {
+  var logDiv = document.getElementById('logContent');
+  logDiv.innerHTML = '';
+  
+  deliveryLogs.slice(-10).forEach(function(logEntry, index) {
+    var logLine = document.createElement('div');
+    logLine.innerText = logEntry;
+    logLine.style.cursor = 'pointer';
+    logLine.style.margin = '2px 0';
+    logLine.title = 'Click for details';
+    
+    logLine.onclick = function() {
+      showLogDetails(logEntry);
+    };
+    
+    logDiv.appendChild(logLine);
+  });
+}
+
+function showLogDetails(logEntry) {
+  // Parse the log entry to show relevant details
+  var timestamp = logEntry.split(' - ')[0];
+  var message = logEntry.split(' - ')[1] || logEntry;
+  
+  var details = "Log Details:\n\n";
+  details += "Time: " + timestamp + "\n";
+  details += "Event: " + message + "\n\n";
+  
+  // Try to extract package/drone IDs from the message
+  var packageMatch = message.match(/(PKG\d+)/);
+  var droneMatch = message.match(/(DRONE\d+)/);
+  
+  if (packageMatch) {
+    var packageId = packageMatch[1];
+    if (packageDetails[packageId]) {
+      details += "Package: " + packageId + "\n";
+      details += "Description: " + packageDetails[packageId].description + "\n";
+      details += "Customer: " + packageDetails[packageId].customer + "\n";
+      details += "Status: " + packageStatuses[packageId] + "\n";
+    }
+  }
+  
+  if (droneMatch) {
+    var droneId = droneMatch[1];
+    details += "Drone: " + droneId + "\n";
+    if (droneBattery[droneId] !== undefined) {
+      details += "Battery: " + droneBattery[droneId] + "%\n";
+    }
+  }
+  
+  alert(details);
+}
+
+/* SIMULATE DRONES */
+
+setInterval(function(){
+
+if(droneBattery["DRONE0001"] === undefined) droneBattery["DRONE0001"] = 92;
+if(droneBattery["DRONE0002"] === undefined) droneBattery["DRONE0002"] = 88;
+if(droneBattery["DRONE0003"] === undefined) droneBattery["DRONE0003"] = 85;
+
+
+
+for(var id in droneBattery){
+
+if(droneBattery[id] <= 0){
+
+console.warn("BATTERY EMPTY:", id);
+
+delete droneMissions[id];
+droneReturningHome[id] = false;
+
+// Mark drone as out of battery
+if(drones[id]){
+  drones[id].bindPopup("🔋 BATTERY EMPTY - LANDED").openPopup();
+  drones[id].setOpacity(0.5); // Make it semi-transparent to show it's inactive
+}
+
+logDeliveryEvent('Battery depleted for ' + id + ' - drone landed');
+
+continue;
+
+}
+
+if(droneBattery[id] <= 20 && home && !droneReturningHome[id]){
+
+console.warn("LOW BATTERY - RETURN HOME:", id);
+addAlert(`Drone ${id} battery critically low - returning home!`, 'error');
+addCommLog(`Drone ${id} battery critical - auto return initiated`, 'control');
+
+// Cancel any current mission immediately
+if (droneMissions[id]) {
+  delete droneMissions[id];
+  logDeliveryEvent('Mission cancelled due to low battery for ' + id);
+  // If this was a delivery mission, mark package as failed
+  if (packageAssignments[id]) {
+    var packageId = packageAssignments[id];
+    updatePackageStatus(packageId, 'failed');
+    delete packageAssignments[id];
+  }
+}
+
+droneReturningHome[id] = true;
+
+droneMissions[id] = {
+index:0,
+route:[home],
+rth:true
+};
+
+logDeliveryEvent('Return home initiated due to low battery for ' + id);
+
+}
+
+}
+
+var droneDirections = {}; // Track direction for each drone (in degrees)
+var turnTimer = {}; // Timer for when drones should turn
+
+/* LINEAR MOVEMENT ONLY IF NO MISSION */
+
+if(!droneMissions["DRONE0001"]
+   && !droneReturningHome["DRONE0001"]
+   && droneBattery["DRONE0001"] > 0){
+
+var pos = dronePositions["DRONE0001"] || [9.08,8.67];
+
+// Initialize direction if not set
+if (!droneDirections["DRONE0001"]) {
+  droneDirections["DRONE0001"] = 250; // Initial direction
+  turnTimer["DRONE0001"] = 0;
+}
+
+// Move linearly in current direction
+var speed = 0.008; // Linear movement speed
+var directionRad = (droneDirections["DRONE0001"] * Math.PI) / 180;
+
+var lat = pos[0] + Math.sin(directionRad) * speed;
+var lon = pos[1] + Math.cos(directionRad) * speed;
+
+// Turn occasionally or at boundaries
+turnTimer["DRONE0001"]++;
+if (turnTimer["DRONE0001"] > 15 + Math.random() * 20 || // Turn every 15-35 seconds
+    lat < 8.5 || lat > 9.5 || lon < 8.3 || lon > 9.0) { // Or at boundaries
+  droneDirections["DRONE0001"] += (Math.random() - 0.5) * 90; // Turn up to 45 degrees left/right
+  turnTimer["DRONE0001"] = 0;
+}
+
+updateDrone(
+"DRONE0001",
+lat,
+lon,
+120,
+12,
+droneBattery["DRONE0001"] ?? 92,
+droneDirections["DRONE0001"]
+);
+
+}
+
+if(!droneMissions["DRONE0002"]
+   && !droneReturningHome["DRONE0002"]
+   && droneBattery["DRONE0002"] > 0){
+
+var pos = dronePositions["DRONE0002"] || [9.20,8.50];
+
+// Initialize direction if not set
+if (!droneDirections["DRONE0002"]) {
+  droneDirections["DRONE0002"] = 120; // Initial direction
+  turnTimer["DRONE0002"] = 0;
+}
+
+// Move linearly in current direction
+var speed = 0.007; // Slightly different speed for variety
+var directionRad = (droneDirections["DRONE0002"] * Math.PI) / 180;
+
+var lat = pos[0] + Math.sin(directionRad) * speed;
+var lon = pos[1] + Math.cos(directionRad) * speed;
+
+// Turn occasionally or at boundaries
+turnTimer["DRONE0002"]++;
+if (turnTimer["DRONE0002"] > 20 + Math.random() * 25 || // Turn every 20-45 seconds
+    lat < 8.5 || lat > 9.5 || lon < 8.3 || lon > 9.0) { // Or at boundaries
+  droneDirections["DRONE0002"] += (Math.random() - 0.5) * 80; // Turn up to 40 degrees left/right
+  turnTimer["DRONE0002"] = 0;
+}
+
+updateDrone(
+"DRONE0002",
+lat,
+lon,
+110,
+10,
+droneBattery["DRONE0002"] ?? 88,
+droneDirections["DRONE0002"]
+);
+
+}
+
+if(!droneMissions["DRONE0003"]
+   && !droneReturningHome["DRONE0003"]
+   && droneBattery["DRONE0003"] > 0){
+
+var pos = dronePositions["DRONE0003"] || [8.90,8.80];
+
+// Initialize direction if not set
+if (!droneDirections["DRONE0003"]) {
+  droneDirections["DRONE0003"] = 300; // Initial direction
+  turnTimer["DRONE0003"] = 0;
+}
+
+// Move linearly in current direction
+var speed = 0.006; // Different speed for variety
+var directionRad = (droneDirections["DRONE0003"] * Math.PI) / 180;
+
+var lat = pos[0] + Math.sin(directionRad) * speed;
+var lon = pos[1] + Math.cos(directionRad) * speed;
+
+// Turn occasionally or at boundaries
+turnTimer["DRONE0003"]++;
+if (turnTimer["DRONE0003"] > 18 + Math.random() * 22 || // Turn every 18-40 seconds
+    lat < 8.5 || lat > 9.5 || lon < 8.3 || lon > 9.0) { // Or at boundaries
+  droneDirections["DRONE0003"] += (Math.random() - 0.5) * 100; // Turn up to 50 degrees left/right
+  turnTimer["DRONE0003"] = 0;
+}
+
+updateDrone(
+"DRONE0003",
+lat,
+lon,
+140,
+14,
+droneBattery["DRONE0003"] ?? 85,
+droneDirections["DRONE0003"]
+);
+
+}
+
+/* MISSION MOVEMENT */
+
+for(var id in droneMissions){
+
+var mission = droneMissions[id];
+var wp = mission.route[mission.index];
+
+if(!wp) continue;
+
+var pos = drones[id].getLatLng();
+
+var lat = pos.lat;
+var lon = pos.lng;
+
+var targetLat = wp[0];
+var targetLon = wp[1];
+
+/* CALCULATE DIRECTION TO WAYPOINT */
+
+var dLat = targetLat - lat;
+var dLon = targetLon - lon;
+var distance = map.distance([lat,lon], wp);
+
+// Normalize direction
+var magnitude = Math.sqrt(dLat*dLat + dLon*dLon);
+if (magnitude > 0) {
+  dLat /= magnitude;
+  dLon /= magnitude;
+}
+
+/* MOVE TOWARD WAYPOINT */
+
+var currentSpeed = droneSpeed;
+
+// Adjust speed based on distance to waypoint (slow down when approaching)
+if (distance < 200) {
+  currentSpeed *= Math.max(0.3, distance / 200); // Minimum 30% speed
+}
+
+// Add some randomness to avoid synchronized movement
+currentSpeed *= (0.9 + Math.random() * 0.2);
+
+lat += dLat * currentSpeed;
+lon += dLon * currentSpeed;
+
+var restricted = isRestricted(lat,lon);
+
+if(restricted){
+
+console.warn("Route blocked:", restricted);
+drones[id].bindPopup("⚠ Avoiding " + restricted).openPopup();
+
+// Try to find an alternative path around the obstacle
+var alternative = findAlternativeWaypoint(lat, lon, targetLat, targetLon, restricted);
+if (alternative) {
+  lat = alternative[0];
+  lon = alternative[1];
+  console.log("Using alternative waypoint:", alternative);
+} else {
+  // Emergency hover
+  lat = pos.lat;
+  lon = pos.lng;
+  addAlert(`Drone ${id} hovering due to blocked route`, 'warning');
+}
+
+}
+
+drones[id].setLatLng([lat,lon]);
+
+/* UPDATE TRAIL */
+
+var trail = droneTrails[id];
+
+trail.addLatLng([lat,lon]);
+
+var maxTrailLength = getSettings().maxTrailLength || 50;
+if(trail.getLatLngs().length > maxTrailLength){
+trail.setLatLngs(trail.getLatLngs().slice(-maxTrailLength));
+}
+
+/* CHECK IF CLOSE TO WAYPOINT */
+
+var totalSegments = mission.route.length;
+var progressScale = 500; // Distance in meters over which progress ramps up smoothly
+
+// Calculate segment progress: 0 when far away, 1 when very close
+// Using exponential decay for smoother visual feedback
+var segmentProgress = Math.max(0, Math.min(1, Math.exp(-distance / progressScale)));
+
+var progress = Math.round(
+((mission.index + segmentProgress) / totalSegments) * 100
+);
+
+// Ensure progress stays within bounds
+progress = Math.max(0, Math.min(100, progress));
+
+if(selectedDrone === id){
+document.getElementById("missionProgress").innerText = progress + "%";
+}
+
+if(distance < 50){
+
+mission.index++;
+
+// Arrived at waypoint - log progress
+logDeliveryEvent('Waypoint ' + mission.index + ' reached by ' + id);
+addCommLog(`Drone ${id} reached waypoint ${mission.index}/${mission.route.length}`, 'mission');
+
+if(mission.index >= mission.route.length){
+delete droneMissions[id];
+console.log("Mission completed:", id);
+
+// Log mission completion
+logDeliveryEvent('Mission completed for ' + id);
+addCommLog(`Mission completed for drone ${id}`, 'mission');
+
+if(selectedDrone === id){
+document.getElementById("missionProgress").innerText = "Completed";
+}
+
+// Check if this was a delivery mission
+if (packageAssignments[id]) {
+  var packageId = packageAssignments[id];
+  updatePackageStatus(packageId, 'delivered');
+  delete packageAssignments[id];
+}
+
+// Check if this was a return home mission
+if (mission.rth) {
+  droneReturningHome[id] = false;
+  addAlert(`Drone ${id} has returned home safely`, 'success');
+  addCommLog(`Drone ${id} returned home`, 'mission');
+}
+
+}
+
+}
+
+updateDrone(
+id,
+lat,
+lon,
+120 + Math.random() * 20, // Vary altitude slightly
+currentSpeed * 1000, // Convert to m/s
+droneBattery[id] || 100,
+Math.atan2(dLon, dLat) * 180 / Math.PI // Calculate heading
+);
+
+}
+
+for(var id in droneBattery){
+
+// Calculate battery drain based on activity
+var drainRate = 0.1; // Base drain rate (per second)
+
+// Increase drain during missions (higher power consumption)
+if (droneMissions[id]) {
+  drainRate *= 3; // 3x drain during flight
+}
+
+// Increase drain when returning home (emergency power)
+if (droneReturningHome[id]) {
+  drainRate *= 1.5; // Additional 50% drain when returning home
+}
+
+// Increase drain at low battery (battery struggles to maintain power)
+if (droneBattery[id] <= 20) {
+  drainRate *= 1.2; // 20% more drain when battery is low
+}
+
+// Add some randomness to simulate real-world variations
+drainRate *= (0.9 + Math.random() * 0.2); // ±10% variation
+
+droneBattery[id] = Math.max(0, droneBattery[id] - drainRate);
+droneBattery[id] = Math.round(droneBattery[id] * 10) / 10;
+
+// Update battery display in fleet list
+var fleetItem = document.getElementById("fleet-" + id);
+if (fleetItem) {
+  var batteryPercent = droneBattery[id];
+  fleetItem.innerText = id + " (Battery: " + batteryPercent + "%)";
+
+  // Color code based on battery level
+  if (batteryPercent <= 20) {
+    fleetItem.style.color = "#ef4444"; // Red
+    fleetItem.style.fontWeight = "bold";
+  } else if (batteryPercent <= 40) {
+    fleetItem.style.color = "#f59e0b"; // Orange
+  } else {
+    fleetItem.style.color = "#16a34a"; // Green
+    fleetItem.style.fontWeight = "normal";
+  }
+}
+
+// Auto-save battery level to database
+if (drones[id]) {
+  fetch(`/api/drone/${id}/telemetry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      battery: droneBattery[id],
+      status: droneBattery[id] <= 20 ? 'low_battery' :
+              droneMissions[id] ? 'mission' :
+              droneReturningHome[id] ? 'returning_home' : 'idle'
+    })
+  }).catch(err => console.warn('Failed to save battery data:', err));
+}
+
+}
+checkCollisions();
+
+updateFleetStatus();
+
+},1000);
+
+/* MISSION MOVEMENT */
+
+function startMission(){
+
+if(!selectedDrone){
+alert("Select a drone first");
+return;
+}
+
+if(waypoints.length === 0 && !packageAssignments[selectedDrone]){
+alert("No mission waypoints or assigned package");
+return;
+}
+
+var route = [...waypoints];
+
+droneReturningHome[selectedDrone] = false;
+
+// If drone has assigned package, add package destination to route
+if (packageAssignments[selectedDrone]) {
+  var packageId = packageAssignments[selectedDrone];
+  var dest = packageDestinations[packageId];
+  route.push(dest);
+  updatePackageStatus(packageId, 'in_transit');
+  calculateETA(packageId, selectedDrone); // Recalculate ETA with current position
+  logDeliveryEvent('Mission started for ' + selectedDrone + ' delivering ' + packageId);
+}
+
+droneMissions[selectedDrone] = {
+index:0,
+route:route,
+startTime: Date.now()
+};
+
+document.getElementById("missionProgress").innerText = "Mission started";
+console.log("Mission started for", selectedDrone);
+
+}
+
+function abortMission(){
+
+if(!selectedDrone){
+alert("Select a drone first");
+return;
+}
+
+if(!droneMissions[selectedDrone]){
+alert("Selected drone has no active mission");
+return;
+}
+
+delete droneMissions[selectedDrone];
+droneReturningHome[selectedDrone] = false;
+
+if (packageAssignments[selectedDrone]) {
+  var packageId = packageAssignments[selectedDrone];
+  if (packageStatuses[packageId] === 'in_transit') {
+    packageStatuses[packageId] = 'assigned';
+  }
+}
+
+logDeliveryEvent('Mission aborted for ' + selectedDrone);
+document.getElementById("missionProgress").innerText = "Aborted";
+console.log("Abort mission for", selectedDrone);
+
+}
+
+function returnHome(){
+
+if(!selectedDrone){
+alert("Select a drone first");
+return;
+}
+
+if(!home){
+alert("Set home location first");
+return;
+}
+
+droneMissions[selectedDrone] = {
+index:0,
+route:[home],
+rth:true
+};
+droneReturningHome[selectedDrone] = true;
+
+logDeliveryEvent('Return-home commanded for ' + selectedDrone);
+document.getElementById("missionProgress").innerText = "Returning home";
+console.log("RTH for", selectedDrone);
+
+}
+
+function landDrone(){
+
+if(!selectedDrone){
+alert("Select a drone first");
+return;
+}
+
+if(droneMissions[selectedDrone]){
+  delete droneMissions[selectedDrone];
+}
+droneReturningHome[selectedDrone] = false;
+
+if(drones[selectedDrone]){
+  drones[selectedDrone].bindPopup("Landed").openPopup();
+}
+
+logDeliveryEvent('Land command for ' + selectedDrone);
+document.getElementById("missionProgress").innerText = "Landed";
+console.log("Land drone", selectedDrone);
+
+}
+
+function assignPackage() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  if (packageAssignments[selectedDrone]) {
+    alert("Drone already has an assigned package");
+    return;
+  }
+  
+  // Find highest priority queued package
+  var priorityOrder = { 'urgent': 3, 'high': 2, 'normal': 1 };
+  var bestPackage = null;
+  var bestPriority = 0;
+  
+  packages.forEach(pkg => {
+    if (packageStatuses[pkg] === 'queued') {
+      var priority = priorityOrder[packageDetails[pkg].priority] || 1;
+      if (priority > bestPriority) {
+        bestPriority = priority;
+        bestPackage = pkg;
+      }
+    }
+  });
+  
+  if (bestPackage) {
+    assignPackageToDrone(bestPackage, selectedDrone);
+    alert("Package " + bestPackage + " assigned to " + selectedDrone);
+  } else {
+    alert("No queued packages available");
+  }
+}
+
+// Initialize analytics
+updateAnalytics();
+
+// Click handler functions for interactive text
+function zoomToAllDrones() {
+  var droneIds = Object.keys(drones);
+  if (droneIds.length === 0) return;
+  
+  var bounds = L.latLngBounds();
+  droneIds.forEach(id => {
+    if (drones[id]) bounds.extend(drones[id].getLatLng());
+  });
+  
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {padding: [20, 20]});
+  }
+}
+
+function zoomToActiveDrones() {
+  var activeDroneIds = Object.keys(droneMissions);
+  if (activeDroneIds.length === 0) {
+    alert("No drones on active missions");
+    return;
+  }
+  
+  var bounds = L.latLngBounds();
+  activeDroneIds.forEach(id => {
+    if (drones[id]) bounds.extend(drones[id].getLatLng());
+  });
+  
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {padding: [20, 20]});
+  }
+}
+
+function zoomToIdleDrones() {
+  var allDroneIds = Object.keys(drones);
+  var activeDroneIds = Object.keys(droneMissions);
+  var idleDroneIds = allDroneIds.filter(id => !activeDroneIds.includes(id));
+  
+  if (idleDroneIds.length === 0) {
+    alert("No idle drones");
+    return;
+  }
+  
+  var bounds = L.latLngBounds();
+  idleDroneIds.forEach(id => {
+    if (drones[id]) bounds.extend(drones[id].getLatLng());
+  });
+  
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {padding: [20, 20]});
+  }
+}
+
+function showCollisionWarnings() {
+  if (collisionCount === 0) {
+    alert("No collision warnings recorded");
+    return;
+  }
+  
+  var message = "Collision Warnings: " + collisionCount + "\n\n";
+  message += "Recent collisions are logged in the delivery logs panel.";
+  alert(message);
+}
+
+function showPackageDetails() {
+  var total = packages.length;
+  var queued = packages.filter(pkg => packageStatuses[pkg] === 'queued').length;
+  var assigned = packages.filter(pkg => packageStatuses[pkg] === 'assigned').length;
+  var inTransit = packages.filter(pkg => packageStatuses[pkg] === 'in_transit').length;
+  var delivered = packages.filter(pkg => packageStatuses[pkg] === 'delivered').length;
+  var failed = packages.filter(pkg => packageStatuses[pkg] === 'failed').length;
+  
+  var message = "Package Details:\n\n";
+  message += "Total: " + total + "\n";
+  message += "Queued: " + queued + "\n";
+  message += "Assigned: " + assigned + "\n";
+  message += "In Transit: " + inTransit + "\n";
+  message += "Delivered: " + delivered + "\n";
+  message += "Failed: " + failed;
+  
+  alert(message);
+}
+
+function showDeliveredPackages() {
+  var deliveredPackages = packages.filter(pkg => packageStatuses[pkg] === 'delivered');
+  if (deliveredPackages.length === 0) {
+    alert("No packages delivered yet");
+    return;
+  }
+  
+  var message = "Delivered Packages:\n\n";
+  deliveredPackages.forEach(pkg => {
+    var details = packageDetails[pkg];
+    message += pkg + ": " + details.description + " (" + details.customer + ")\n";
+  });
+  
+  alert(message);
+}
+
+function showDeliveryStats() {
+  var total = packages.length;
+  var delivered = packages.filter(pkg => packageStatuses[pkg] === 'delivered').length;
+  var failed = packages.filter(pkg => packageStatuses[pkg] === 'failed').length;
+  var successRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+  
+  var message = "Delivery Statistics:\n\n";
+  message += "Total Packages: " + total + "\n";
+  message += "Delivered: " + delivered + "\n";
+  message += "Failed: " + failed + "\n";
+  message += "Success Rate: " + successRate + "%\n\n";
+  
+  if (total > 0) {
+    message += "Click on individual packages in the queue to see details.";
+  }
+  
+  alert(message);
+}
+
+function showDeliveryTimeStats() {
+  var deliveryTimes = [];
+  packages.forEach(pkg => {
+    if (packageStatuses[pkg] === 'delivered' && packageDetails[pkg].deliveredAt) {
+      var created = packageDetails[pkg].created;
+      var deliveredAt = packageDetails[pkg].deliveredAt;
+      var timeDiff = (deliveredAt - created) / 1000 / 60; // minutes
+      deliveryTimes.push(timeDiff);
+    }
+  });
+  
+  if (deliveryTimes.length === 0) {
+    alert("No delivery time data available yet");
+    return;
+  }
+  
+  var avgTime = Math.round(deliveryTimes.reduce((a,b) => a+b) / deliveryTimes.length);
+  var minTime = Math.round(Math.min(...deliveryTimes));
+  var maxTime = Math.round(Math.max(...deliveryTimes));
+  
+  var message = "Delivery Time Statistics:\n\n";
+  message += "Average: " + avgTime + " minutes\n";
+  message += "Fastest: " + minTime + " minutes\n";
+  message += "Slowest: " + maxTime + " minutes\n";
+  message += "Total deliveries: " + deliveryTimes.length;
+  
+  alert(message);
+}
+
+// Telemetry click handlers
+function showAltitudeDetails() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  var alt = document.getElementById("alt").innerText;
+  alert("Altitude Details for " + selectedDrone + ":\n\nCurrent Altitude: " + alt + " meters\n\nThis represents the drone's height above ground level during flight.");
+}
+
+function showSpeedDetails() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  var spd = document.getElementById("spd").innerText;
+  alert("Speed Details for " + selectedDrone + ":\n\nCurrent Speed: " + spd + " m/s\n\nThis is the drone's ground speed. Normal cruising speed is around 12 m/s.");
+}
+
+function showBatteryDetails() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  var bat = document.getElementById("bat").innerText;
+  var status = "";
+  if (bat <= 20) status = "CRITICAL - Return home immediately!";
+  else if (bat <= 40) status = "LOW - Consider returning home";
+  else status = "NORMAL";
+  
+  alert("Battery Details for " + selectedDrone + ":\n\nCurrent Level: " + bat + "%\nStatus: " + status + "\n\nBattery drains at 0.2% per second during flight.\nReturn home automatically triggers at 20%.");
+}
+
+function showHeadingDetails() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  var hdg = document.getElementById("hdg").innerText;
+  var direction = "";
+  if (hdg >= 337.5 || hdg < 22.5) direction = "North";
+  else if (hdg >= 22.5 && hdg < 67.5) direction = "Northeast";
+  else if (hdg >= 67.5 && hdg < 112.5) direction = "East";
+  else if (hdg >= 112.5 && hdg < 157.5) direction = "Southeast";
+  else if (hdg >= 157.5 && hdg < 202.5) direction = "South";
+  else if (hdg >= 202.5 && hdg < 247.5) direction = "Southwest";
+  else if (hdg >= 247.5 && hdg < 292.5) direction = "West";
+  else direction = "Northwest";
+  
+  alert("Heading Details for " + selectedDrone + ":\n\nCurrent Heading: " + hdg + "° (" + direction + ")\n\nThis is the direction the drone is facing/traveling.");
+}
+
+function showMissionDetails() {
+  if (!selectedDrone) {
+    alert("Select a drone first");
+    return;
+  }
+  
+  var progress = document.getElementById("missionProgress").innerText;
+  var details = "Mission Details for " + selectedDrone + ":\n\n";
+  details += "Status: " + progress + "\n\n";
+  
+  if (droneMissions[selectedDrone]) {
+    var mission = droneMissions[selectedDrone];
+    details += "Waypoints remaining: " + (mission.route.length - mission.index) + "\n";
+    details += "Total waypoints: " + mission.route.length + "\n";
+    if (mission.rth) details += "Type: Return Home\n";
+    else details += "Type: Delivery Mission\n";
+  }
+  
+  if (packageAssignments[selectedDrone]) {
+    var packageId = packageAssignments[selectedDrone];
+    details += "\nAssigned Package: " + packageId + "\n";
+    details += "Destination: " + packageDetails[packageId].description + "\n";
+    details += "Customer: " + packageDetails[packageId].customer + "\n";
+  }
+  
+  alert(details);
+}
+
+// Weather simulation
+function updateWeather() {
+  // Simulate weather data
+  const conditions = ['Sunny', 'Cloudy', 'Rainy', 'Windy', 'Clear'];
+  const temp = Math.round(20 + Math.random() * 15); // 20-35°C
+  const wind = Math.round(Math.random() * 20); // 0-20 km/h
+  const visibility = Math.round(5 + Math.random() * 15); // 5-20 km
+  
+  document.getElementById('temp').textContent = temp;
+  document.getElementById('wind').textContent = wind;
+  document.getElementById('visibility').textContent = visibility;
+  document.getElementById('conditions').textContent = conditions[Math.floor(Math.random() * conditions.length)];
+}
+
+// Alert system
+function addAlert(message, type = 'info') {
+  const alertContent = document.getElementById('alertContent');
+  const alertItem = document.createElement('div');
+  alertItem.className = 'alert-item';
+  
+  const colors = {
+    'success': '#16a34a',
+    'warning': '#f59e0b',
+    'error': '#ef4444',
+    'info': '#3b82f6'
+  };
+  
+  alertItem.style.color = colors[type] || colors.info;
+  alertItem.innerHTML = `${type === 'success' ? '✓' : type === 'warning' ? '⚠' : type === 'error' ? '✕' : 'ℹ'} ${message}`;
+  
+  alertContent.insertBefore(alertItem, alertContent.firstChild);
+  
+  // Remove after 10 seconds
+  setTimeout(() => {
+    if (alertItem.parentNode) {
+      alertItem.remove();
+    }
+  }, 10000);
+}
+
+// Settings management
+function saveSettings() {
+  const soundEnabled = document.getElementById('soundEnabled').checked;
+  const autoUpdate = document.getElementById('autoUpdate').checked;
+  const showTrails = document.getElementById('showTrails').checked;
+  const darkMode = document.getElementById('darkMode').checked;
+
+  // Store settings with better key and more options
+  const settings = {
+    soundEnabled,
+    autoUpdate,
+    showTrails,
+    darkMode,
+    collisionThreshold: 100,
+    batteryWarningLevel: 20,
+    maxTrailLength: 50
+  };
+
+  localStorage.setItem('groundstation_settings', JSON.stringify(settings));
+
+  addAlert('Settings saved successfully!', 'success');
+  addCommLog('System settings updated', 'system');
+
+  // Apply settings
+  applySettings(settings);
+}
+
+function applySettings(settings) {
+  if (!settings) {
+    settings = getSettings();
+  }
+
+  // Apply trail visibility
+  Object.values(droneTrails).forEach(trail => {
+    if (settings.showTrails) {
+      trail.addTo(map);
+    } else {
+      map.removeLayer(trail);
+    }
+  });
+
+  // Apply dark mode
+  if (settings.darkMode) {
+    document.body.classList.add('dark-mode');
+  } else {
+    document.body.classList.remove('dark-mode');
+  }
+
+  console.log('Applied settings:', settings);
+}
+
+function getSettings() {
+  // Try to get from localStorage first, fallback to defaults
+  try {
+    var stored = localStorage.getItem('groundstation_settings');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to load settings from localStorage:', e);
+  }
+
+  // Default settings
+  return {
+    soundEnabled: true,
+    autoUpdate: true,
+    showTrails: true,
+    darkMode: false,
+    collisionThreshold: 100,
+    batteryWarningLevel: 20,
+    maxTrailLength: 50
+  };
+}
+
+function playSound(type) {
+  const settings = getSettings();
+  if (settings.soundEnabled !== false) {
+    // In a real app, play actual sounds based on type
+    console.log(`Playing ${type} sound`);
+    // Could implement Web Audio API here for actual sound playback
+  }
+}
+
+// Initialize new features
+setInterval(updateWeather, 30000); // Update weather every 30 seconds
+updateWeather(); // Initial update
+
+// Load saved settings
+applySettings();
+
+// Emergency controls
+function emergencyStop() {
+  // Stop all drones immediately
+  Object.keys(droneMissions).forEach(id => {
+    delete droneMissions[id];
+  });
+  Object.keys(droneReturningHome).forEach(id => {
+    droneReturningHome[id] = true;
+  });
+  addAlert('EMERGENCY STOP activated - all drones halting!', 'error');
+  playSound('emergency');
+  addCommLog('EMERGENCY STOP activated by operator', 'control');
+}
+
+function returnAllHome() {
+  // Send all drones home
+  Object.keys(drones).forEach(id => {
+    if (home && !droneReturningHome[id]) {
+      droneReturningHome[id] = true;
+      addAlert(`Drone ${id} returning home`, 'warning');
+    }
+  addCommLog('All drones commanded to return home', 'control');
+  });
+  playSound('return');
+}
+
+function activateSafeMode() {
+  // Activate safe mode - reduce speeds, increase safety margins
+  droneSpeed = 0.02; // Slower speed
+  addAlert('Safe mode activated - reduced operational parameters', 'warning');
+  playSound('safe');
+  addCommLog('Safe mode activated - parameters adjusted', 'control');
+}
+
+// Video feed simulation
+function updateVideoFeed() {
+  const status = document.getElementById('feedStatus');
+  const statuses = ['Active', 'Streaming', 'HD Quality', 'Recording'];
+  status.textContent = statuses[Math.floor(Math.random() * statuses.length)];
+  
+  // Simulate camera quality indicator
+  const quality = Math.random();
+  if (quality > 0.8) {
+    status.style.color = '#16a34a';
+  } else if (quality > 0.5) {
+    status.style.color = '#f59e0b';
+  } else {
+    status.style.color = '#ef4444';
+  }
+}
+
+// Advanced analytics
+function updateAdvancedAnalytics() {
+  // Calculate efficiency (packages delivered vs time)
+  const totalPackages = packages.length;
+  const deliveredPackages = packages.filter(pkg => packageStatuses[pkg] === 'delivered').length;
+  const efficiency = totalPackages > 0 ? Math.round((deliveredPackages / totalPackages) * 100) : 100;
+  
+  // Calculate reliability (successful deliveries vs total attempts)
+  const reliability = Math.max(85, Math.min(100, 95 + Math.random() * 10 - 5));
+  
+  // Calculate safety (no collisions, proper returns)
+  const safety = collisionCount === 0 ? 100 : Math.max(70, 100 - collisionCount * 10);
+  
+  document.getElementById('efficiencyScore').textContent = efficiency + '%';
+  document.getElementById('efficiencyBar').style.width = efficiency + '%';
+  
+  document.getElementById('reliabilityScore').textContent = Math.round(reliability) + '%';
+  document.getElementById('reliabilityBar').style.width = Math.round(reliability) + '%';
+  
+  document.getElementById('safetyScore').textContent = safety + '%';
+  document.getElementById('safetyBar').style.width = safety + '%';
+}
+
+// Communication logging
+function addCommLog(message, type = 'system') {
+  const commLog = document.getElementById('commLog');
+  const entry = document.createElement('div');
+  entry.className = 'comm-entry';
+  
+  const timestamp = new Date().toLocaleTimeString();
+  const prefix = type === 'drone' ? '🚁' : type === 'control' ? '🎛️' : '📡';
+  
+  entry.innerHTML = `[${timestamp}] ${prefix} ${message}`;
+  commLog.insertBefore(entry, commLog.firstChild);
+  
+  // Keep only last 20 entries
+  while (commLog.children.length > 20) {
+    commLog.removeChild(commLog.lastChild);
+  }
+}
+
+// Enhanced initialization
+setInterval(updateVideoFeed, 5000);
+setInterval(updateAdvancedAnalytics, 10000);
+setInterval(() => {
+  if (Math.random() < 0.1) { // 10% chance every minute
+    addCommLog('System health check passed', 'system');
+  }
+}, 60000);
+
+updateVideoFeed();
+updateAdvancedAnalytics();
+
+// Panel toggle functionality
+function togglePanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    panel.classList.toggle('panel-expanded');
+    panel.classList.toggle('panel-collapsed');
+  }
+}
+
+// Top banner toggle
+function toggleBanner() {
+  const banner = document.getElementById('topBanner');
+  if (banner) {
+    banner.classList.toggle('banner-expanded');
+  }
+}
+
+function collapseAllPanels() {
+  const panelIds = ['controls', 'telemetry', 'fleet', 'fleetStatus', 'analytics', 'packages', 'deliveryLogs', 'weather', 'alerts', 'settings', 'videoFeed', 'advancedAnalytics', 'emergency', 'communication', 'command'];
+  panelIds.forEach(id => {
+    const panel = document.getElementById(id);
+    if (panel) {
+      panel.classList.remove('panel-expanded');
+      panel.classList.add('panel-collapsed');
+    }
+  });
+}
+
+// Update system status
+function updateStatus() {
+  const statusText = document.getElementById('statusText');
+  const activeDrones = Object.keys(drones).length;
+  const activeMissions = Object.keys(droneMissions).length;
+  
+  if (activeDrones === 0) {
+    statusText.textContent = 'Idle';
+    statusText.parentElement.firstElementChild.style.color = '#94a3b8';
+  } else if (activeMissions > 0) {
+    statusText.textContent = `${activeMissions} Active`;
+    statusText.parentElement.firstElementChild.style.color = '#3b82f6';
+  } else {
+    statusText.textContent = `${activeDrones} Ready`;
+    statusText.parentElement.firstElementChild.style.color = '#16a34a';
+  }
+}
+
+// Keyboard shortcuts indicator
+function showKeyboardShortcuts() {
+  const message = "Keyboard Shortcuts:\n" +
+    "Q - Refresh status\n" +
+    "T - Toggle top banner\n" +
+    "R - Return all home\n" +
+    "E - Emergency stop\n" +
+    "S - Safe mode\n" +
+    "H or ? - This help\n" +
+    "Esc - Collapse all panels";
+  alert(message);
+}
+
+// Add keyboard listeners
+document.addEventListener('keydown', function(e) {
+  if (document.activeElement.tagName === 'INPUT') return;
+  
+  const key = e.key.toUpperCase();
+  switch(key) {
+    case 'Q':
+      updateStatus();
+      break;
+    case 'T':
+      toggleBanner();
+      break;
+    case 'R':
+      if (Object.keys(drones).length > 0) returnAllHome();
+      break;
+    case 'E':
+      if (confirm('Emergency Stop ALL drones?')) emergencyStop();
+      break;
+    case 'S':
+      activateSafeMode();
+      break;
+    case 'H':
+    case '?':
+      showKeyboardShortcuts();
+      break;
+    case 'ESCAPE':
+      collapseAllPanels();
+      break;
+  }
+});
+
+// Add click handler for top banner
+document.addEventListener('DOMContentLoaded', function() {
+  const banner = document.getElementById('topBanner');
+  if (banner) {
+    banner.addEventListener('click', function(e) {
+      if (e.target.tagName !== 'STRONG') {
+        toggleBanner();
+      }
+    });
+  }
+  
+  const quickStatus = document.getElementById('quickStatus');
+  if (quickStatus) {
+    quickStatus.addEventListener('click', function(e) {
+      e.stopPropagation();
+      updateStatus();
+    });
+  }
+  
+  // Add click handlers to all panels
+  const panelIds = ['controls', 'telemetry', 'fleet', 'fleetStatus', 'analytics', 'packages', 'deliveryLogs', 'weather', 'alerts', 'settings', 'videoFeed', 'advancedAnalytics', 'emergency', 'communication', 'command'];
+  
+  panelIds.forEach(id => {
+    const panel = document.getElementById(id);
+    if (panel) {
+      panel.classList.add('panel-collapsed'); // Start collapsed
+      panel.addEventListener('click', function(e) {
+        // Don't toggle if clicking on interactive elements
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL' || e.target.closest('button') || e.target.closest('input') || e.target.closest('label')) {
+          return;
+        }
+        togglePanel(id);
+      });
+    }
+  });
+  
+  // Update status every 2 seconds
+  setInterval(updateStatus, 2000);
+  updateStatus(); // Initial update
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,774 @@
+{
+  "zones": [
+    {
+      "id": "APT_AJAOKUTA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 7.4572,
+      "lon": 6.4611,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_AKANU_IBIAM_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 6.4743,
+      "lon": 7.562,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_AKURE_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 7.2467,
+      "lon": 5.301,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_BAJOGA_NORTHEAST_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 10.9199,
+      "lon": 11.5012,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_BAUCHI_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 10.2944,
+      "lon": 9.8167,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_BENIN_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 6.317,
+      "lon": 5.5995,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_EKET_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 4.6422,
+      "lon": 7.949,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_ESCRAVOS_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 5.6253,
+      "lon": 5.1924,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_BIDA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 9.1,
+      "lon": 6.017,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_GOMBE_LAWANTI_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 10.3384,
+      "lon": 10.8874,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_IBADAN_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 7.3625,
+      "lon": 3.9783,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_GUSAU_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 12.1717,
+      "lon": 6.6961,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_ILORIN_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 8.4402,
+      "lon": 4.4939,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_KADUNA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 10.696,
+      "lon": 7.3201,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_KADUNA_OLD_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 10.5989,
+      "lon": 7.4487,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_KAINJI",
+      "type": "AIRPORT",
+      "lat": 9.8927,
+      "lon": 4.4854,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_KATSINA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 13.0078,
+      "lon": 7.6604,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MALLAM_AMINU_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 12.0476,
+      "lon": 8.5246,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MAIDUGURI_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 11.8553,
+      "lon": 13.0809,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MAKURDI_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 7.7039,
+      "lon": 8.6139,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MINNA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 9.6522,
+      "lon": 6.4623,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MARGARET_EKPO_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 4.976,
+      "lon": 8.3472,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_MURTALA_MUHAMMED_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 6.5774,
+      "lon": 3.3212,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_ABUJA/NNAMDI_AZIKIWE",
+      "type": "AIRPORT",
+      "lat": 9.0068,
+      "lon": 7.2632,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_OSHOGBO_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 7.783,
+      "lon": 4.483,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_PORT_HARCOURT_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 5.0155,
+      "lon": 6.9496,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_SAM_MBAKWE_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 5.4271,
+      "lon": 7.206,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_SADIQ_ABUBAKAR_III_INTERNATIONAL_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 12.9163,
+      "lon": 5.2072,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_WARRI_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 5.5961,
+      "lon": 5.8178,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_SHIRORO_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 9.8847,
+      "lon": 6.8186,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_YAKUBU_GOWON_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 9.6398,
+      "lon": 8.8691,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_ZARIA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 11.1302,
+      "lon": 7.6858,
+      "radius_m": 8000,
+      "priority": "HARD"
+    },
+    {
+      "id": "APT_YOLA_AIRPORT",
+      "type": "AIRPORT",
+      "lat": 9.2576,
+      "lon": 12.4304,
+      "radius_m": 8000,
+      "priority": "HARD"
+    }
+  ],
+  "obstacles": [
+    {
+      "id": "OBS_0",
+      "type": "OBSTACLE",
+      "lat": 6.6090703,
+      "lon": 3.4162646,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_1",
+      "type": "OBSTACLE",
+      "lat": 10.554989,
+      "lon": 7.4494415,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_2",
+      "type": "OBSTACLE",
+      "lat": 12.8305853,
+      "lon": 7.6673143,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_3",
+      "type": "OBSTACLE",
+      "lat": 12.8428537,
+      "lon": 7.6680667,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_4",
+      "type": "OBSTACLE",
+      "lat": 12.8391897,
+      "lon": 7.6697053,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_5",
+      "type": "OBSTACLE",
+      "lat": 12.8455799,
+      "lon": 7.6665796,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_6",
+      "type": "OBSTACLE",
+      "lat": 12.8434918,
+      "lon": 7.6620202,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_7",
+      "type": "OBSTACLE",
+      "lat": 12.8332552,
+      "lon": 7.6660542,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_8",
+      "type": "OBSTACLE",
+      "lat": 12.8334853,
+      "lon": 7.6725994,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_9",
+      "type": "OBSTACLE",
+      "lat": 12.8366979,
+      "lon": 7.6642999,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_10",
+      "type": "OBSTACLE",
+      "lat": 12.8401057,
+      "lon": 7.6691888,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_11",
+      "type": "OBSTACLE",
+      "lat": 12.8397628,
+      "lon": 7.6630666,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_12",
+      "type": "OBSTACLE",
+      "lat": 12.841013,
+      "lon": 7.668797,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_13",
+      "type": "OBSTACLE",
+      "lat": 12.8375574,
+      "lon": 7.6630087,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_14",
+      "type": "OBSTACLE",
+      "lat": 12.8350352,
+      "lon": 7.6651414,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_15",
+      "type": "OBSTACLE",
+      "lat": 12.8344751,
+      "lon": 7.6721141,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_16",
+      "type": "OBSTACLE",
+      "lat": 12.829704,
+      "lon": 7.667764,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_17",
+      "type": "OBSTACLE",
+      "lat": 12.8406744,
+      "lon": 7.6628083,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_18",
+      "type": "OBSTACLE",
+      "lat": 12.8382998,
+      "lon": 7.6701238,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_19",
+      "type": "OBSTACLE",
+      "lat": 12.8354432,
+      "lon": 7.6714996,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_20",
+      "type": "OBSTACLE",
+      "lat": 12.8294735,
+      "lon": 7.6735353,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_21",
+      "type": "OBSTACLE",
+      "lat": 12.8446726,
+      "lon": 7.6670249,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_22",
+      "type": "OBSTACLE",
+      "lat": 12.8425541,
+      "lon": 7.6622918,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_23",
+      "type": "OBSTACLE",
+      "lat": 12.831471,
+      "lon": 7.6669002,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_24",
+      "type": "OBSTACLE",
+      "lat": 12.8341582,
+      "lon": 7.6656134,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_25",
+      "type": "OBSTACLE",
+      "lat": 12.832374,
+      "lon": 7.6664549,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_26",
+      "type": "OBSTACLE",
+      "lat": 12.8419333,
+      "lon": 7.6683606,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_27",
+      "type": "OBSTACLE",
+      "lat": 12.8416208,
+      "lon": 7.662559,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_28",
+      "type": "OBSTACLE",
+      "lat": 12.8314167,
+      "lon": 7.6729426,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_29",
+      "type": "OBSTACLE",
+      "lat": 12.8363983,
+      "lon": 7.6710321,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_30",
+      "type": "OBSTACLE",
+      "lat": 12.8437696,
+      "lon": 7.6676215,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_31",
+      "type": "OBSTACLE",
+      "lat": 12.8359208,
+      "lon": 7.6646917,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_32",
+      "type": "OBSTACLE",
+      "lat": 12.8323741,
+      "lon": 7.6724429,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_33",
+      "type": "OBSTACLE",
+      "lat": 12.827859,
+      "lon": 7.6679911,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_34",
+      "type": "OBSTACLE",
+      "lat": 12.8373664,
+      "lon": 7.6706047,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_35",
+      "type": "OBSTACLE",
+      "lat": 11.1072103,
+      "lon": 7.7197106,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_36",
+      "type": "OBSTACLE",
+      "lat": 12.8384821,
+      "lon": 7.6628484,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_37",
+      "type": "OBSTACLE",
+      "lat": 12.8304682,
+      "lon": 7.6732095,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_38",
+      "type": "OBSTACLE",
+      "lat": 12.8269386,
+      "lon": 7.6683651,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_39",
+      "type": "OBSTACLE",
+      "lat": 12.8287837,
+      "lon": 7.6681959,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_40",
+      "type": "OBSTACLE",
+      "lat": 6.43648093763204,
+      "lon": 3.42780490980488,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_41",
+      "type": "OBSTACLE",
+      "lat": 6.43045454727594,
+      "lon": 3.43100506225428,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_42",
+      "type": "OBSTACLE",
+      "lat": 6.42975759298197,
+      "lon": 3.43046878219283,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_43",
+      "type": "OBSTACLE",
+      "lat": 6.43777688910393,
+      "lon": 3.41247505791743,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_44",
+      "type": "OBSTACLE",
+      "lat": 6.43485691065414,
+      "lon": 3.42279638656775,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_45",
+      "type": "OBSTACLE",
+      "lat": 6.42651980974098,
+      "lon": 3.42361727280996,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_46",
+      "type": "OBSTACLE",
+      "lat": 6.43800514475507,
+      "lon": 3.41204300461731,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_47",
+      "type": "OBSTACLE",
+      "lat": 6.42696853624065,
+      "lon": 3.43065878998662,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_48",
+      "type": "OBSTACLE",
+      "lat": 6.44623346066436,
+      "lon": 3.39759219764066,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_49",
+      "type": "OBSTACLE",
+      "lat": 6.45234498891938,
+      "lon": 3.38792893636387,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_50",
+      "type": "OBSTACLE",
+      "lat": 6.42785460774877,
+      "lon": 3.43697477547732,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_51",
+      "type": "OBSTACLE",
+      "lat": 6.42304161850642,
+      "lon": 3.428727423184,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_52",
+      "type": "OBSTACLE",
+      "lat": 6.42304596594388,
+      "lon": 3.42829134054414,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_53",
+      "type": "OBSTACLE",
+      "lat": 6.45558751861108,
+      "lon": 3.38321559373104,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_54",
+      "type": "OBSTACLE",
+      "lat": 6.43667309877128,
+      "lon": 3.42342005331031,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_55",
+      "type": "OBSTACLE",
+      "lat": 6.43612636944256,
+      "lon": 3.42364922793899,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_56",
+      "type": "OBSTACLE",
+      "lat": 6.43687913579878,
+      "lon": 3.42285502577626,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_57",
+      "type": "OBSTACLE",
+      "lat": 6.45875663533589,
+      "lon": 3.43188470828997,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_58",
+      "type": "OBSTACLE",
+      "lat": 9.05582076693849,
+      "lon": 7.49286421192019,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_59",
+      "type": "OBSTACLE",
+      "lat": 6.43370277423528,
+      "lon": 3.44508219513474,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_60",
+      "type": "OBSTACLE",
+      "lat": 6.47346343448204,
+      "lon": 7.50573500543379,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_61",
+      "type": "OBSTACLE",
+      "lat": 6.4459639534982,
+      "lon": 7.50023070756485,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_62",
+      "type": "OBSTACLE",
+      "lat": 6.60673515005472,
+      "lon": 3.60607898796977,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_63",
+      "type": "OBSTACLE",
+      "lat": 6.45280223860828,
+      "lon": 3.38856395577062,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_64",
+      "type": "OBSTACLE",
+      "lat": 6.42785322063038,
+      "lon": 3.44176031780467,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_65",
+      "type": "OBSTACLE",
+      "lat": 6.45335202680649,
+      "lon": 3.38775672719262,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_66",
+      "type": "OBSTACLE",
+      "lat": 6.43617450025537,
+      "lon": 3.42779491047091,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_67",
+      "type": "OBSTACLE",
+      "lat": 6.44536614419873,
+      "lon": 3.43354570112873,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_68",
+      "type": "OBSTACLE",
+      "lat": 6.45599464466021,
+      "lon": 3.42920807050181,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_69",
+      "type": "OBSTACLE",
+      "lat": 6.42623928515853,
+      "lon": 3.43008675185074,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_70",
+      "type": "OBSTACLE",
+      "lat": 9.04894168172328,
+      "lon": 7.47283233289661,
+      "radius_m": 150
+    },
+    {
+      "id": "OBS_71",
+      "type": "OBSTACLE",
+      "lat": 9.04970315046506,
+      "lon": 7.47411394987098,
+      "radius_m": 150
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "soundEnabled": true,
+  "autoUpdate": true,
+  "showTrails": true,
+  "darkMode": false,
+  "collisionThreshold": 100,
+  "batteryWarningLevel": 20,
+  "maxTrailLength": 50
+}
