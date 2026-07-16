@@ -23,6 +23,11 @@ app.get("/health", (req, res) => {
 
 // Load initial data from database
 let drones = {};
+let packages = [];
+let missions = [];
+let logs = [];
+let alerts = [];
+let settings = {};
 let droneSockets = {};
 
 function loadInitialData() {
@@ -41,9 +46,49 @@ function loadInitialData() {
 
     console.log(`Loaded ${Object.keys(drones).length} drones from database`);
   });
+
+  db.getAllPackages((err, rows) => {
+    if (!err) {
+      packages = rows || [];
+      console.log(`Loaded ${packages.length} packages from database`);
+    }
+  });
+
+  db.getAllMissions((err, rows) => {
+    if (!err) {
+      missions = rows || [];
+      console.log(`Loaded ${missions.length} missions from database`);
+    }
+  });
+
+  db.getRecentLogs(100, (err, rows) => {
+    if (!err) {
+      logs = rows || [];
+    }
+  });
+
+  db.getActiveAlerts((err, rows) => {
+    if (!err) {
+      alerts = rows || [];
+    }
+  });
+
+  settings = db.getSettings();
 }
 
 loadInitialData();
+
+function broadcastState() {
+  io.emit('stateUpdate', {
+    drones,
+    packages,
+    missions,
+    logs,
+    alerts,
+    settings,
+    count: Object.keys(drones).length
+  });
+}
 
 function broadcastFleet() {
   io.emit("fleetUpdate", { drones, count: Object.keys(drones).length });
@@ -52,7 +97,15 @@ function broadcastFleet() {
 io.on("connection", (socket) => {
   console.log("Client connected", socket.id);
 
-  socket.emit("init", { drones, count: Object.keys(drones).length });
+  socket.emit("init", {
+    drones,
+    packages,
+    missions,
+    logs,
+    alerts,
+    settings,
+    count: Object.keys(drones).length
+  });
 
   socket.on("registerDrone", (data) => {
     if (!data || !data.id) return;
@@ -124,6 +177,10 @@ io.on("connection", (socket) => {
       broadcastFleet();
     }
   });
+});
+
+app.get("/api/state", (req, res) => {
+  res.json({ drones, packages, missions, logs, alerts, settings, count: Object.keys(drones).length });
 });
 
 app.get("/api/drones", (req, res) => {
@@ -213,8 +270,15 @@ app.post("/api/packages", (req, res) => {
     };
 
     db.savePackage(packageRecord);
+    const existingIndex = packages.findIndex((item) => item.id === packageRecord.id);
+    if (existingIndex >= 0) {
+      packages[existingIndex] = packageRecord;
+    } else {
+      packages.push(packageRecord);
+    }
     db.logEvent(`Package created: ${packageRecord.id} for ${packageRecord.customer}`, 'package', null, packageRecord.id);
     io.emit("packageUpdate", packageRecord);
+    broadcastState();
     res.json({ ok: true, package: packageRecord });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -233,12 +297,19 @@ app.put("/api/packages/:id", (req, res) => {
 
     const updatedPackage = { ...existing, ...updates, id };
     db.savePackage(updatedPackage);
+    const packageIndex = packages.findIndex((item) => item.id === id);
+    if (packageIndex >= 0) {
+      packages[packageIndex] = updatedPackage;
+    } else {
+      packages.push(updatedPackage);
+    }
 
     if (updates.status) {
       db.logEvent(`Package ${id} status changed to ${updates.status}`, 'package', updates.assignedDrone, id);
     }
 
     io.emit("packageUpdate", updatedPackage);
+    broadcastState();
     res.json({ ok: true, package: updatedPackage });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -260,8 +331,15 @@ app.post("/api/missions", (req, res) => {
     };
 
     db.saveMission(mission);
+    const missionIndex = missions.findIndex((item) => item.id === mission.id);
+    if (missionIndex >= 0) {
+      missions[missionIndex] = mission;
+    } else {
+      missions.push(mission);
+    }
     db.logEvent(`Mission created for drone ${missionData.droneId}`, 'mission', missionData.droneId);
     io.emit("missionUpdate", mission);
+    broadcastState();
     res.json({ ok: true, mission });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -281,6 +359,33 @@ app.get("/api/missions/:id", (req, res) => {
   res.json(mission);
 });
 
+app.put("/api/missions/:id", (req, res) => {
+  const id = req.params.id;
+  const updates = req.body;
+
+  try {
+    const existing = missions.find((item) => item.id === id) || db.getMissionById(id);
+    if (!existing) {
+      return res.status(404).json({ error: "Mission not found" });
+    }
+
+    const updatedMission = { ...existing, ...updates, id };
+    db.saveMission(updatedMission);
+    const missionIndex = missions.findIndex((item) => item.id === id);
+    if (missionIndex >= 0) {
+      missions[missionIndex] = updatedMission;
+    } else {
+      missions.push(updatedMission);
+    }
+
+    io.emit("missionUpdate", updatedMission);
+    broadcastState();
+    res.json({ ok: true, mission: updatedMission });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Logs API endpoints
 app.get("/api/logs", (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
@@ -296,7 +401,10 @@ app.post("/api/logs", (req, res) => {
 
   try {
     db.logEvent(message, type, droneId, packageId);
+    logs.push({ message, type, droneId, packageId, timestamp: Date.now() });
+    if (logs.length > 1000) logs.splice(0, logs.length - 1000);
     io.emit("logUpdate", { message, type, droneId, packageId, timestamp: Date.now() });
+    broadcastState();
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -317,7 +425,10 @@ app.post("/api/alerts", (req, res) => {
 
   try {
     db.addAlert(message, type);
+    alerts.push({ id: Date.now(), message, type, timestamp: Date.now(), acknowledged: false });
+    if (alerts.length > 500) alerts.splice(0, alerts.length - 500);
     io.emit("alertUpdate", { message, type, timestamp: Date.now() });
+    broadcastState();
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -328,6 +439,9 @@ app.put("/api/alerts/:id/acknowledge", (req, res) => {
   const id = parseInt(req.params.id);
   try {
     db.acknowledgeAlert(id);
+    const alert = alerts.find((item) => item.id === id);
+    if (alert) alert.acknowledged = true;
+    broadcastState();
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -355,7 +469,9 @@ app.put("/api/settings/:key", (req, res) => {
 
   try {
     db.setSetting(key, value);
+    settings[key] = value;
     io.emit("settingsUpdate", { key, value });
+    broadcastState();
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

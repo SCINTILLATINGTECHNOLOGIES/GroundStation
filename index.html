@@ -276,6 +276,52 @@ try {
           );
         });
       }
+
+      if (Array.isArray(data && data.packages)) {
+        data.packages.forEach(pkg => {
+          if (!packages.includes(pkg.id)) {
+            addPackage(pkg.latitude || pkg.lat || pkg.destination?.lat || 9.08,
+                       pkg.longitude || pkg.lon || pkg.destination?.lng || 8.67,
+                       pkg.description || pkg.title || 'Package',
+                       pkg.weight || 1,
+                       pkg.priority || 'normal',
+                       pkg.customer || 'Unknown',
+                       pkg.id,
+                       pkg.created_at || pkg.created,
+                       pkg.status || 'queued');
+          } else if (pkg.status) {
+            updatePackageStatus(pkg.id, pkg.status, false);
+          }
+        });
+      }
+
+      if (Array.isArray(data && data.missions)) {
+        data.missions.forEach(mission => {
+          if (mission && mission.droneId) {
+            droneMissions[mission.droneId] = mission;
+          }
+        });
+      }
+
+      if (Array.isArray(data && data.alerts)) {
+        data.alerts.forEach(alert => {
+          if (alert && alert.message) {
+            addAlert(alert.message, alert.type || 'info');
+          }
+        });
+      }
+
+      if (Array.isArray(data && data.logs)) {
+        data.logs.slice(-10).forEach(log => {
+          if (log && log.message) {
+            addCommLog(log.message, 'system');
+          }
+        });
+      }
+
+      if (data && data.settings) {
+        applySettings(data.settings);
+      }
     });
 
     socket.on('droneUpdate', (drone) => {
@@ -323,6 +369,69 @@ try {
         if (pkg.status) {
           updatePackageStatus(pkg.id, pkg.status, false);
         }
+      }
+    });
+
+    socket.on('stateUpdate', (state) => {
+      if (!state) return;
+      if (state.drones) {
+        Object.values(state.drones).forEach(drone => {
+          updateDrone(
+            drone.id,
+            drone.latitude || drone.lat || drone.position?.lat || 9.08,
+            drone.longitude || drone.lon || drone.position?.lng || 8.67,
+            drone.altitude || drone.alt || 100,
+            drone.speed || drone.spd || 0,
+            drone.battery || 100,
+            drone.heading || drone.hdg || 0
+          );
+        });
+      }
+
+      if (Array.isArray(state.packages)) {
+        state.packages.forEach(pkg => {
+          if (!packages.includes(pkg.id)) {
+            addPackage(pkg.latitude || pkg.lat || pkg.destination?.lat || 9.08,
+                       pkg.longitude || pkg.lon || pkg.destination?.lng || 8.67,
+                       pkg.description || pkg.title || 'Package',
+                       pkg.weight || 1,
+                       pkg.priority || 'normal',
+                       pkg.customer || 'Unknown',
+                       pkg.id,
+                       pkg.created_at || pkg.created,
+                       pkg.status || 'queued');
+          } else if (pkg.status) {
+            updatePackageStatus(pkg.id, pkg.status, false);
+          }
+        });
+      }
+
+      if (Array.isArray(state.missions)) {
+        state.missions.forEach(mission => {
+          if (mission && mission.droneId) {
+            droneMissions[mission.droneId] = mission;
+          }
+        });
+      }
+
+      if (Array.isArray(state.alerts)) {
+        state.alerts.forEach(alert => {
+          if (alert && alert.message) {
+            addAlert(alert.message, alert.type || 'info');
+          }
+        });
+      }
+
+      if (Array.isArray(state.logs)) {
+        state.logs.slice(-8).forEach(log => {
+          if (log && log.message) {
+            addCommLog(log.message, 'system');
+          }
+        });
+      }
+
+      if (state.settings) {
+        applySettings(state.settings);
       }
     });
 
@@ -1823,11 +1932,35 @@ if (packageAssignments[selectedDrone]) {
   logDeliveryEvent('Mission started for ' + selectedDrone + ' delivering ' + packageId);
 }
 
-droneMissions[selectedDrone] = {
-index:0,
-route:route,
-startTime: Date.now()
+var missionId = 'MISSION-' + selectedDrone + '-' + Date.now();
+var missionPayload = {
+  id: missionId,
+  droneId: selectedDrone,
+  waypoints: route.map(point => ({ lat: point[0], lng: point[1] })),
+  route: route,
+  home: home,
+  status: 'active',
+  created_at: Date.now()
 };
+
+droneMissions[selectedDrone] = {
+  id: missionId,
+  index:0,
+  route:route,
+  startTime: Date.now(),
+  ...missionPayload
+};
+
+fetch('/api/missions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(missionPayload)
+}).then(response => response.json()).then(result => {
+  if (result && result.ok) {
+    droneMissions[selectedDrone] = result.mission || droneMissions[selectedDrone];
+    addCommLog(`Mission ${missionId} started for ${selectedDrone}`, 'mission');
+  }
+}).catch(err => console.warn('Failed to save mission:', err));
 
 document.getElementById("missionProgress").innerText = "Mission started";
 console.log("Mission started for", selectedDrone);
@@ -1844,6 +1977,15 @@ return;
 if(!droneMissions[selectedDrone]){
 alert("Selected drone has no active mission");
 return;
+}
+
+var mission = droneMissions[selectedDrone];
+if (mission && mission.id) {
+  fetch(`/api/missions/${mission.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'aborted' })
+  }).catch(err => console.warn('Failed to update mission status:', err));
 }
 
 delete droneMissions[selectedDrone];
