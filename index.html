@@ -256,6 +256,100 @@ try {
       transports: ['websocket', 'polling'],
       reconnection: true
     });
+
+    socket.on('connect', () => {
+      console.log('Connected to server socket:', socket.id);
+    });
+
+    socket.on('init', (data) => {
+      console.log('Server init data received', data);
+      if (data && data.drones) {
+        Object.values(data.drones).forEach(drone => {
+          updateDrone(
+            drone.id,
+            drone.latitude || drone.lat || drone.position?.lat || 9.08,
+            drone.longitude || drone.lon || drone.position?.lng || 8.67,
+            drone.altitude || drone.alt || 100,
+            drone.speed || drone.spd || 0,
+            drone.battery || 100,
+            drone.heading || drone.hdg || 0
+          );
+        });
+      }
+    });
+
+    socket.on('droneUpdate', (drone) => {
+      if (!drone || !drone.id) return;
+      updateDrone(
+        drone.id,
+        drone.latitude || drone.lat || drone.position?.lat || 9.08,
+        drone.longitude || drone.lon || drone.position?.lng || 8.67,
+        drone.altitude || drone.alt || 100,
+        drone.speed || drone.spd || 0,
+        drone.battery || 100,
+        drone.heading || drone.hdg || 0
+      );
+    });
+
+    socket.on('fleetUpdate', (fleet) => {
+      if (!fleet || !fleet.drones) return;
+      Object.values(fleet.drones).forEach(drone => {
+        updateDrone(
+          drone.id,
+          drone.latitude || drone.lat || drone.position?.lat || 9.08,
+          drone.longitude || drone.lon || drone.position?.lng || 8.67,
+          drone.altitude || drone.alt || 100,
+          drone.speed || drone.spd || 0,
+          drone.battery || 100,
+          drone.heading || drone.hdg || 0
+        );
+      });
+    });
+
+    socket.on('packageUpdate', (pkg) => {
+      console.log('Package update received', pkg);
+      if (pkg && pkg.id) {
+        if (!packages.includes(pkg.id)) {
+          addPackage(pkg.latitude || pkg.lat || pkg.destination?.lat || 9.08,
+                     pkg.longitude || pkg.lon || pkg.destination?.lng || 8.67,
+                     pkg.description || pkg.title || 'Package',
+                     pkg.weight || 1,
+                     pkg.priority || 'normal',
+                     pkg.customer || 'Unknown',
+                     pkg.id,
+                     pkg.created_at || pkg.created,
+                     pkg.status || 'queued');
+        }
+        if (pkg.status) {
+          updatePackageStatus(pkg.id, pkg.status, false);
+        }
+      }
+    });
+
+    socket.on('missionUpdate', (mission) => {
+      console.log('Mission update received', mission);
+      if (mission && mission.droneId) {
+        droneMissions[mission.droneId] = mission;
+      }
+    });
+
+    socket.on('alertUpdate', (alert) => {
+      if (alert && alert.message) {
+        addAlert(alert.message, alert.type || 'info');
+      }
+    });
+
+    socket.on('logUpdate', (log) => {
+      if (log && log.message) {
+        addCommLog(log.message, 'system');
+      }
+    });
+
+    socket.on('settingsUpdate', (settings) => {
+      if (settings) {
+        applySettings(settings);
+      }
+    });
   }
 } catch (err) {
   console.warn('Socket.IO initialization failed:', err);
@@ -352,6 +446,16 @@ window.addEventListener('load', function() {
 
   // Load and apply settings
   loadSettingsIntoUI();
+
+  // Load saved backend data and show sample packages only if no backend packages exist
+  loadSavedData().then(hasBackendPackages => {
+    if (!hasBackendPackages) {
+      addDefaultSamplePackages();
+    }
+  }).catch(err => {
+    console.warn('Failed to load saved backend data:', err);
+    addDefaultSamplePackages();
+  });
 });
 
 function loadSettingsIntoUI() {
@@ -370,6 +474,69 @@ function loadSettingsIntoUI() {
 
   // Apply settings
   applySettings(settings);
+}
+
+async function loadSavedData() {
+  let loadedPackages = false;
+
+  try {
+    const response = await fetch('/api/packages');
+    const json = await response.json();
+    if (Array.isArray(json.packages) && json.packages.length > 0) {
+      loadedPackages = true;
+      json.packages.forEach(pkg => {
+        if (!packages.includes(pkg.id)) {
+          addPackage(
+            pkg.latitude || pkg.lat || pkg.destination?.lat || 9.08,
+            pkg.longitude || pkg.lon || pkg.destination?.lng || 8.67,
+            pkg.description || pkg.title || 'Package',
+            pkg.weight || 1,
+            pkg.priority || 'normal',
+            pkg.customer || 'Unknown',
+            pkg.id,
+            pkg.created_at || pkg.created,
+            pkg.status || 'queued'
+          );
+        }
+      });
+
+      // Keep package ID counter ahead of existing IDs
+      json.packages.forEach(pkg => {
+        if (pkg.id && pkg.id.startsWith('PKG')) {
+          const num = parseInt(pkg.id.replace('PKG', ''), 10);
+          if (!isNaN(num) && num >= packageIdCounter) {
+            packageIdCounter = num + 1;
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Unable to load packages from backend:', err);
+  }
+
+  try {
+    const response = await fetch('/api/missions');
+    const json = await response.json();
+    if (Array.isArray(json.missions)) {
+      json.missions.forEach(mission => {
+        if (mission.droneId && mission.route) {
+          droneMissions[mission.droneId] = mission;
+          addCommLog(`Loaded saved mission for ${mission.droneId}`, 'system');
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Unable to load missions from backend:', err);
+  }
+
+  return loadedPackages;
+}
+
+function addDefaultSamplePackages() {
+  addPackage(9.1, 8.7, 'Medical supplies', 2, 'high', 'City Hospital');
+  addPackage(9.15, 8.75, 'Food delivery', 1, 'normal', 'Restaurant Chain');
+  addPackage(8.95, 8.85, 'Electronics', 1.5, 'normal', 'Tech Store');
+  addPackage(9.05, 8.65, 'Documents', 0.5, 'urgent', 'Law Firm');
 }
 
 var routeLine = L.polyline([],{
@@ -603,15 +770,52 @@ function addPackageFromForm() {
   
   // Get current map center for package location
   var center = map.getCenter();
-  addPackage(center.lat, center.lng, desc, weight, priority, customer);
-  
-  // Clear form
-  document.getElementById('packageDesc').value = '';
-  document.getElementById('packageWeight').value = '';
-  document.getElementById('packagePriority').value = 'normal';
-  document.getElementById('packageCustomer').value = '';
-  
-  alert('Package added successfully!');
+  var packageId = 'PKG' + packageIdCounter++;
+  var payload = {
+    id: packageId,
+    latitude: center.lat,
+    longitude: center.lng,
+    description: desc,
+    weight: weight,
+    priority: priority,
+    customer: customer,
+    status: 'queued',
+    created_at: Date.now()
+  };
+
+  fetch('/api/packages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.ok && result.package) {
+      addPackage(
+        center.lat,
+        center.lng,
+        desc,
+        weight,
+        priority,
+        customer,
+        result.package.id || packageId,
+        result.package.created_at || payload.created_at,
+        result.package.status || 'queued'
+      );
+      document.getElementById('packageDesc').value = '';
+      document.getElementById('packageWeight').value = '';
+      document.getElementById('packagePriority').value = 'normal';
+      document.getElementById('packageCustomer').value = '';
+      alert('Package added successfully!');
+    } else {
+      console.warn('Package API returned error', result);
+      alert('Failed to save package. Check console for details.');
+    }
+  })
+  .catch(err => {
+    console.error('Failed to save package:', err);
+    alert('Failed to save package. See developer console.');
+  });
 }
 
 
@@ -985,17 +1189,19 @@ function updateAnalytics() {
 }
 
 // Package management functions
-function addPackage(lat, lon, description, weight = 1, priority = 'normal', customer = 'Unknown') {
-  var packageId = 'PKG' + packageIdCounter++;
+function addPackage(lat, lon, description, weight = 1, priority = 'normal', customer = 'Unknown', packageId = null, createdAt = null, status = 'queued') {
+  if (!packageId) {
+    packageId = 'PKG' + packageIdCounter++;
+  }
   packages.push(packageId);
-  packageStatuses[packageId] = 'queued';
+  packageStatuses[packageId] = status;
   packageDestinations[packageId] = [lat, lon];
   packageDetails[packageId] = {
     description: description,
     weight: weight,
     priority: priority,
     customer: customer,
-    created: Date.now(),
+    created: createdAt || Date.now(),
     eta: null
   };
   
@@ -1010,22 +1216,29 @@ function addPackage(lat, lon, description, weight = 1, priority = 'normal', cust
 
 function assignPackageToDrone(packageId, droneId) {
   if (packageStatuses[packageId] === 'queued' && !packageAssignments[droneId]) {
-    packageStatuses[packageId] = 'assigned';
     packageAssignments[droneId] = packageId;
     
     // Calculate ETA
     calculateETA(packageId, droneId);
     
-    updatePackageList();
+    updatePackageStatus(packageId, 'assigned', true);
     logDeliveryEvent('Package ' + packageId + ' assigned to ' + droneId);
     console.log('Package', packageId, 'assigned to', droneId);
   }
 }
 
-function updatePackageStatus(packageId, status) {
+function updatePackageStatus(packageId, status, syncToBackend = true) {
   packageStatuses[packageId] = status;
   updatePackageList();
   
+  if (syncToBackend) {
+    fetch(`/api/packages/${packageId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status })
+    }).catch(err => console.warn('Failed to update package status on backend:', err));
+  }
+
   if (status === 'delivered') {
     packageDetails[packageId].deliveredAt = Date.now();
     // Remove assignment
