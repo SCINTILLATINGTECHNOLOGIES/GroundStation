@@ -288,6 +288,10 @@ function refreshWeather() {
   io.emit('weatherUpdate', { ...weather });
 }
 
+// Variant A max payload capacity (see project spec, Section 2 / 15.3)
+// TODO: move to a config/settings value once multiple airframe variants exist
+const MAX_PAYLOAD_KG = 1.0;
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -614,10 +618,19 @@ app.post("/api/packages", (req, res) => {
     return res.status(400).json({ error: "Delivery location is inside a restricted geofence", zones: validation.hits });
   }
 
+  // Payload capacity validation (Variant A max: MAX_PAYLOAD_KG)
+  const weight = Number(packageData.weight);
+  const capacity_ok = Number.isFinite(weight) && weight > 0 && weight <= MAX_PAYLOAD_KG;
+  if (!capacity_ok) {
+    pushLog(`Package ${packageData.id} rejected: weight ${packageData.weight}kg exceeds max capacity ${MAX_PAYLOAD_KG}kg`, 'warning', null, packageData.id);
+    return res.status(400).json({ error: `Payload weight exceeds max capacity of ${MAX_PAYLOAD_KG}kg`, weight: packageData.weight, max: MAX_PAYLOAD_KG });
+  }
+
   try {
     const packageRecord = {
       ...packageData,
       status: packageData.status || 'queued',
+      capacity_ok,
       created_at: packageData.created_at || Date.now()
     };
 
