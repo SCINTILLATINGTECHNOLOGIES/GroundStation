@@ -1,0 +1,14 @@
+{
+  "PKG001": {
+    "id": "PKG001",
+    "latitude": 9.1,
+    "longitude": 8.7,
+    "description": "Test Package",
+    "weight": 1,
+    "priority": "normal",
+    "customer": "Test Customer",
+    "status": "queued",
+    "created_at": 1784230719052,
+    "updated_at": 1784230719053
+  }
+}

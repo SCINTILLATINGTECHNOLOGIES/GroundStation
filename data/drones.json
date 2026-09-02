@@ -1,23 +1,23 @@
 {
   "DRONE0001": {
-    "battery": 80.1,
+    "battery": 74.6,
     "status": "idle",
     "id": "DRONE0001",
-    "lastSeen": 1784143642324,
-    "updated_at": 1784143642342
+    "lastSeen": 1788295236133,
+    "updated_at": 1788295236137
   },
   "DRONE0002": {
-    "battery": 76.1,
+    "battery": 74.6,
     "status": "idle",
     "id": "DRONE0002",
-    "lastSeen": 1784143642348,
-    "updated_at": 1784143642361
+    "lastSeen": 1788295236141,
+    "updated_at": 1788295236144
   },
   "DRONE0003": {
-    "battery": 73.1,
+    "battery": 74.6,
     "status": "idle",
     "id": "DRONE0003",
-    "lastSeen": 1784143642367,
-    "updated_at": 1784143642387
+    "lastSeen": 1788295236147,
+    "updated_at": 1788295236149
   }
 }

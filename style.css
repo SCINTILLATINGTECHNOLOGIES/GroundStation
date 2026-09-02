@@ -314,15 +314,6 @@ body {
   overflow-y: auto;
   font-size: 0.65rem;
 }
-
-#controls,
-#command {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  padding: 4px;
-}
-
 #controls button {
   background: linear-gradient(135deg, var(--accent), #6366f1);
   padding: 2px 4px;

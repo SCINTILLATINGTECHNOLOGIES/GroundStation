@@ -3,6 +3,263 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 const db = require("./database");
+const fs = require("fs");
+
+let geofence = { zones: [], obstacles: [] };
+try {
+  const gfRaw = fs.readFileSync(__dirname + "/nigeria_geofence.json", "utf8");
+  geofence = JSON.parse(gfRaw);
+  console.log(`Loaded geofence: ${geofence.zones.length} zones, ${geofence.obstacles.length} obstacles`);
+} catch (e) {
+  console.warn("Could not load geofence file:", e.message);
+}
+
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const toRad = (x) => (x * Math.PI) / 180;
+  const R = 6371000; // meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function pointInAnyZone(lat, lon) {
+  const hits = [];
+  if (!geofence) return { hits };
+  (geofence.zones || []).forEach((z) => {
+    const d = haversineMeters(lat, lon, z.lat, z.lon);
+    if (d <= (z.radius_m || 0)) hits.push({ id: z.id, type: z.type, priority: z.priority, distance_m: d });
+  });
+  (geofence.obstacles || []).forEach((o) => {
+    const d = haversineMeters(lat, lon, o.lat, o.lon);
+    if (d <= (o.radius_m || 0)) hits.push({ id: o.id, type: o.type, priority: 'OBSTACLE', distance_m: d });
+  });
+  return { hits };
+}
+
+function validateGeofencePoint(lat, lon) {
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    return { ok: false, error: 'Latitude and longitude must be numbers', hits: [] };
+  }
+  const result = pointInAnyZone(lat, lon);
+  const hardHit = (result.hits || []).find(h => h.priority === 'HARD' || h.type === 'OBSTACLE');
+  return {
+    ok: !hardHit,
+    hits: result.hits || [],
+    error: hardHit ? `Location is inside a restricted geofence: ${hardHit.id}` : null
+  };
+}
+
+function validateMissionWaypoints(waypoints) {
+  if (!Array.isArray(waypoints)) return { ok: true, hits: [] };
+
+  for (let i = 0; i < waypoints.length; i++) {
+    const wp = waypoints[i];
+    if (!wp || typeof wp.latitude !== 'number' || typeof wp.longitude !== 'number') continue;
+    const validation = validateGeofencePoint(wp.latitude, wp.longitude);
+    if (!validation.ok) {
+      return { ok: false, waypointIndex: i, hits: validation.hits, error: validation.error };
+    }
+  }
+
+  return { ok: true, hits: [] };
+}
+
+function normalizeCommand(cmd) {
+  if (!cmd || !cmd.action) return null;
+  return {
+    ...cmd,
+    protocol: (cmd.protocol || cmd.transport || cmd.type || 'generic').toString().toLowerCase(),
+    relayedAt: Date.now()
+  };
+}
+
+const MAVLINK_MSG_ID_COMMAND_LONG = 76;
+const MAV_CMD_COMPONENT_ARM_DISARM = 400;
+const MAV_CMD_NAV_TAKEOFF = 22;
+const MAV_CMD_NAV_LAND = 21;
+const MAV_CMD_DO_SET_MODE = 176;
+const MAV_CMD_NAV_WAYPOINT = 16;
+
+function floatToLEBytes(value) {
+  const buffer = Buffer.alloc(4);
+  buffer.writeFloatLE(value, 0);
+  return buffer;
+}
+
+function uint16LE(value) {
+  const buffer = Buffer.alloc(2);
+  buffer.writeUInt16LE(value & 0xffff, 0);
+  return buffer;
+}
+
+function uint32LE(value) {
+  const buffer = Buffer.alloc(4);
+  buffer.writeUInt32LE(value >>> 0, 0);
+  return buffer;
+}
+
+function mavlinkChecksum(payload) {
+  let crc = 0xffff;
+  for (const byte of payload) {
+    crc = crc ^ byte;
+    for (let i = 0; i < 8; i++) {
+      const check = crc & 1;
+      crc = (crc >> 1) & 0xffff;
+      if (check) crc = crc ^ 0xa001;
+    }
+  }
+  return crc & 0xffff;
+}
+
+function buildMavlinkCommandLong(cmd, targetSystem = 1, targetComponent = 1, sequence = 0) {
+  const action = (cmd && cmd.action ? cmd.action : 'ARM').toString().toUpperCase();
+  const params = Array.from({ length: 7 }, (_, index) => Number(cmd?.params?.[index] ?? cmd?.[`param${index + 1}`] ?? 0));
+
+  const commandMap = {
+    ARM: { command: MAV_CMD_COMPONENT_ARM_DISARM, param1: 1 },
+    DISARM: { command: MAV_CMD_COMPONENT_ARM_DISARM, param1: 0 },
+    TAKEOFF: { command: MAV_CMD_NAV_TAKEOFF, param1: 0 },
+    LAND: { command: MAV_CMD_NAV_LAND, param1: 0 },
+    RTL: { command: 20, param1: 0 },
+    SET_MODE: { command: MAV_CMD_DO_SET_MODE, param1: Number(cmd.mode ?? 4) },
+    WAYPOINT: { command: MAV_CMD_NAV_WAYPOINT, param1: 0, param5: Number(cmd.latitude ?? 0), param6: Number(cmd.longitude ?? 0), param7: Number(cmd.altitude ?? 0) },
+    COMMAND_LONG: { command: Number(cmd.command ?? MAV_CMD_COMPONENT_ARM_DISARM) }
+  };
+
+  const mapped = commandMap[action] || commandMap.ARM;
+  const commandId = Number(mapped.command ?? MAV_CMD_COMPONENT_ARM_DISARM);
+  const payload = Buffer.alloc(33);
+  payload[0] = Number(cmd.targetSystem ?? targetSystem);
+  payload[1] = Number(cmd.targetComponent ?? targetComponent);
+  uint16LE(commandId).copy(payload, 2);
+  payload[4] = Number(cmd.confirmation ?? 0);
+
+  const scalarSlots = [
+    'param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7'
+  ];
+
+  scalarSlots.forEach((key, index) => {
+    const value = Number(mapped[key] ?? params[index] ?? cmd[key] ?? 0);
+    floatToLEBytes(value).copy(payload, 5 + (index * 4));
+  });
+
+  const packet = Buffer.alloc(1 + 1 + 1 + 1 + 1 + 1 + 3 + payload.length + 2);
+  packet[0] = 0xfd;
+  packet[1] = payload.length;
+  packet[2] = 0x00;
+  packet[3] = 0x00;
+  packet[4] = Number(sequence & 0xff);
+  packet[5] = Number(cmd.systemId ?? 1);
+  packet[6] = Number(cmd.componentId ?? 1);
+  packet.writeUIntLE(MAVLINK_MSG_ID_COMMAND_LONG, 7, 3);
+  payload.copy(packet, 10);
+
+  const checksum = mavlinkChecksum(packet.slice(1, packet.length - 2));
+  packet[packet.length - 2] = checksum & 0xff;
+  packet[packet.length - 1] = (checksum >> 8) & 0xff;
+
+  return {
+    packetType: 'COMMAND_LONG',
+    messageId: MAVLINK_MSG_ID_COMMAND_LONG,
+    command: commandId,
+    targetSystem: payload[0],
+    targetComponent: payload[1],
+    action,
+    params: {
+      param1: Number(payload.readFloatLE(5)),
+      param2: Number(payload.readFloatLE(9)),
+      param3: Number(payload.readFloatLE(13)),
+      param4: Number(payload.readFloatLE(17)),
+      param5: Number(payload.readFloatLE(21)),
+      param6: Number(payload.readFloatLE(25)),
+      param7: Number(payload.readFloatLE(29))
+    },
+    raw: packet.toString('hex'),
+    hex: packet.toString('hex')
+  };
+}
+
+function relayCommand(cmd) {
+  const payload = normalizeCommand(cmd);
+  if (!payload) return { ok: false, error: 'Command payload required' };
+
+  const target = payload.target;
+  const emitName = payload.protocol === 'mavlink' ? 'mavlinkCommand' : 'command';
+
+  if (payload.protocol === 'mavlink') {
+    const mavlinkPacket = buildMavlinkCommandLong(payload, payload.targetSystem ?? 1, payload.targetComponent ?? 1, payload.sequence ?? 0);
+    const message = {
+      ...payload,
+      protocol: 'mavlink',
+      packet: mavlinkPacket,
+      raw: mavlinkPacket.raw,
+      action: payload.action,
+      command: mavlinkPacket.command,
+      targetSystem: mavlinkPacket.targetSystem,
+      targetComponent: mavlinkPacket.targetComponent
+    };
+
+    if (target && droneSockets[target]) {
+      io.to(droneSockets[target]).emit(emitName, message);
+      io.to(droneSockets[target]).emit('command', message);
+      return { ok: true, sentTo: target, protocol: payload.protocol, packet: mavlinkPacket };
+    }
+
+    io.emit(emitName, message);
+    io.emit('command', message);
+    return { ok: true, sentTo: 'broadcast', protocol: payload.protocol, packet: mavlinkPacket };
+  }
+
+  if (target && droneSockets[target]) {
+    io.to(droneSockets[target]).emit(emitName, payload);
+    io.to(droneSockets[target]).emit('command', payload);
+    return { ok: true, sentTo: target, protocol: payload.protocol };
+  }
+
+  io.emit(emitName, payload);
+  io.emit('command', payload);
+  return { ok: true, sentTo: 'broadcast', protocol: payload.protocol };
+}
+
+function parseHexPacket(rawValue) {
+  if (typeof rawValue !== 'string') return null;
+  const clean = rawValue.trim().replace(/^0x/i, '').replace(/\s+/g, '');
+  if (!clean || clean.length % 2 !== 0) return null;
+
+  try {
+    return Buffer.from(clean, 'hex');
+  } catch (error) {
+    return null;
+  }
+}
+
+function decodeMavlinkPacket(packetLike) {
+  if (!packetLike) return null;
+
+  let buffer = null;
+  if (Buffer.isBuffer(packetLike)) buffer = packetLike;
+  else if (typeof packetLike === 'string') buffer = parseHexPacket(packetLike) || Buffer.from(packetLike, 'utf8');
+  else if (typeof packetLike === 'object') {
+    if (typeof packetLike.hex === 'string') buffer = parseHexPacket(packetLike.hex);
+    else if (typeof packetLike.raw === 'string') buffer = parseHexPacket(packetLike.raw);
+    else if (Array.isArray(packetLike)) buffer = Buffer.from(packetLike);
+  }
+
+  if (!buffer || buffer.length < 10) return null;
+
+  const messageId = buffer.readUIntLE(7, 3) || null;
+  const packetType = messageId === 76 ? 'COMMAND_LONG' : 'RAW';
+  return {
+    version: 1,
+    messageId,
+    packetType,
+    payloadLength: buffer[1],
+    raw: buffer.toString('hex'),
+    hex: buffer.toString('hex')
+  };
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -13,12 +270,34 @@ const io = new Server(server, {
   }
 });
 
+const weather = {
+  condition: 'Clear',
+  temperature_c: 24,
+  wind_kph: 10,
+  visibility_km: 12,
+  updatedAt: Date.now()
+};
+
+function refreshWeather() {
+  const conditions = ['Clear', 'Sunny', 'Cloudy', 'Rainy', 'Windy'];
+  weather.condition = conditions[Math.floor(Math.random() * conditions.length)];
+  weather.temperature_c = Math.round(18 + Math.random() * 16);
+  weather.wind_kph = Math.round(Math.random() * 25);
+  weather.visibility_km = Math.round(5 + Math.random() * 15);
+  weather.updatedAt = Date.now();
+  io.emit('weatherUpdate', { ...weather });
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "groundstation", timestamp: Date.now() });
+});
+
+app.get("/api/weather", (req, res) => {
+  res.json({ ...weather });
 });
 
 // Load initial data from database
@@ -77,6 +356,22 @@ function loadInitialData() {
 }
 
 loadInitialData();
+
+function pushLog(message, type = 'info', droneId = null, packageId = null) {
+  const entry = {
+    id: Date.now(),
+    timestamp: Date.now(),
+    message,
+    type,
+    drone_id: droneId,
+    package_id: packageId
+  };
+
+  logs.push(entry);
+  if (logs.length > 1000) logs.splice(0, logs.length - 1000);
+  db.logEvent(message, type, droneId, packageId);
+  io.emit('logUpdate', entry);
+}
 
 function broadcastState() {
   io.emit('stateUpdate', {
@@ -153,14 +448,20 @@ io.on("connection", (socket) => {
 
   socket.on("command", (cmd) => {
     console.log("Command received:", cmd);
-
-    if (cmd && cmd.target && droneSockets[cmd.target]) {
-      io.to(droneSockets[cmd.target]).emit("command", cmd);
-      console.log(`Sent targeted command to ${cmd.target}`);
-      return;
+    const result = relayCommand(cmd);
+    if (result.ok && result.sentTo !== 'broadcast') {
+      console.log(`Sent ${result.protocol} command to ${result.sentTo}`);
+    } else if (result.ok) {
+      console.log(`Broadcast ${result.protocol} command`);
     }
+  });
 
-    io.emit("command", cmd);
+  socket.on("mavlinkCommand", (cmd) => {
+    relayCommand({ ...cmd, protocol: 'mavlink' });
+  });
+
+  socket.on("mavlink", (packet) => {
+    io.emit('mavlinkTelemetry', packet);
   });
 
   socket.on("disconnect", () => {
@@ -197,17 +498,61 @@ app.get("/api/drones/:id", (req, res) => {
 
 app.post("/api/command", (req, res) => {
   const cmd = req.body;
-  if (!cmd || !cmd.action) {
-    return res.status(400).json({ error: "Command payload required" });
+  const result = relayCommand(cmd);
+
+  if (!result.ok) {
+    return res.status(400).json({ error: result.error || 'Command payload required' });
   }
 
-  if (cmd.target && droneSockets[cmd.target]) {
-    io.to(droneSockets[cmd.target]).emit("command", cmd);
-  } else {
-    io.emit("command", cmd);
+  res.json({ ok: true, sentTo: result.sentTo, protocol: result.protocol, packet: result.packet || null });
+});
+
+app.get("/api/mavlink/health", (req, res) => {
+  res.json({ ok: true, service: 'mavlink-bridge', protocol: 'mavlink', timestamp: Date.now() });
+});
+
+app.post("/api/mavlink", (req, res) => {
+  const payload = req.body || {};
+
+  if (payload.action || payload.protocol === 'mavlink') {
+    const result = relayCommand({ ...payload, protocol: 'mavlink' });
+    if (!result.ok) {
+      return res.status(400).json({ ok: false, error: result.error || 'MAVLink command rejected' });
+    }
+
+    return res.json({ ok: true, relayed: result, packet: result.packet || null });
   }
 
-  res.json({ ok: true, sentTo: cmd.target || "broadcast" });
+  const decoded = decodeMavlinkPacket(payload.raw || payload.hex || payload.packet || payload);
+  if (!decoded) {
+    return res.status(400).json({ ok: false, error: 'MAVLink packet payload required' });
+  }
+
+  io.emit('mavlinkTelemetry', decoded);
+  return res.json({ ok: true, packet: decoded });
+});
+
+app.post("/api/mavlink/command", (req, res) => {
+  const payload = req.body || {};
+  const result = relayCommand({ ...payload, protocol: 'mavlink', action: payload.action || 'COMMAND_LONG' });
+
+  if (!result.ok) {
+    return res.status(400).json({ ok: false, error: result.error || 'MAVLink command rejected' });
+  }
+
+  res.json({ ok: true, relayed: result, packet: result.packet || null });
+});
+
+app.post("/api/mavlink/telemetry", (req, res) => {
+  const payload = req.body || {};
+  const decoded = decodeMavlinkPacket(payload.raw || payload.hex || payload.packet || payload);
+
+  if (!decoded) {
+    return res.status(400).json({ ok: false, error: 'MAVLink telemetry packet required' });
+  }
+
+  io.emit('mavlinkTelemetry', decoded);
+  res.json({ ok: true, packet: decoded });
 });
 
 app.post("/api/drone/:id/telemetry", (req, res) => {
@@ -262,6 +607,13 @@ app.post("/api/packages", (req, res) => {
     return res.status(400).json({ error: "Package ID, latitude, and longitude required" });
   }
 
+  // Geofence validation
+  const validation = validateGeofencePoint(packageData.latitude, packageData.longitude);
+  if (!validation.ok) {
+    pushLog(`Package ${packageData.id} rejected: ${validation.error}`, 'warning', null, packageData.id);
+    return res.status(400).json({ error: "Delivery location is inside a restricted geofence", zones: validation.hits });
+  }
+
   try {
     const packageRecord = {
       ...packageData,
@@ -276,7 +628,7 @@ app.post("/api/packages", (req, res) => {
     } else {
       packages.push(packageRecord);
     }
-    db.logEvent(`Package created: ${packageRecord.id} for ${packageRecord.customer}`, 'package', null, packageRecord.id);
+    pushLog(`Package created: ${packageRecord.id} for ${packageRecord.customer}`, 'package', null, packageRecord.id);
     io.emit("packageUpdate", packageRecord);
     broadcastState();
     res.json({ ok: true, package: packageRecord });
@@ -295,6 +647,14 @@ app.put("/api/packages/:id", (req, res) => {
       return res.status(404).json({ error: "Package not found" });
     }
 
+    const lat = updates.latitude ?? existing.latitude;
+    const lon = updates.longitude ?? existing.longitude;
+    const validation = validateGeofencePoint(lat, lon);
+    if (!validation.ok) {
+      pushLog(`Package ${id} update rejected: ${validation.error}`, 'warning', updates.assignedDrone || null, id);
+      return res.status(400).json({ error: "Delivery location is inside a restricted geofence", zones: validation.hits });
+    }
+
     const updatedPackage = { ...existing, ...updates, id };
     db.savePackage(updatedPackage);
     const packageIndex = packages.findIndex((item) => item.id === id);
@@ -305,7 +665,7 @@ app.put("/api/packages/:id", (req, res) => {
     }
 
     if (updates.status) {
-      db.logEvent(`Package ${id} status changed to ${updates.status}`, 'package', updates.assignedDrone, id);
+      pushLog(`Package ${id} status changed to ${updates.status}`, 'package', updates.assignedDrone, id);
     }
 
     io.emit("packageUpdate", updatedPackage);
@@ -323,6 +683,13 @@ app.post("/api/missions", (req, res) => {
     return res.status(400).json({ error: "Mission ID, drone ID, and waypoints required" });
   }
 
+  // Geofence validation for waypoints
+  const waypointValidation = validateMissionWaypoints(missionData.waypoints);
+  if (!waypointValidation.ok) {
+    pushLog(`Mission ${missionData.id} rejected: waypoint ${waypointValidation.waypointIndex} is inside restricted geofence`, 'warning', missionData.droneId, null);
+    return res.status(400).json({ error: `Waypoint ${waypointValidation.waypointIndex} is inside a restricted geofence`, zones: waypointValidation.hits });
+  }
+
   try {
     const mission = {
       ...missionData,
@@ -337,7 +704,7 @@ app.post("/api/missions", (req, res) => {
     } else {
       missions.push(mission);
     }
-    db.logEvent(`Mission created for drone ${missionData.droneId}`, 'mission', missionData.droneId);
+    pushLog(`Mission created for drone ${missionData.droneId}`, 'mission', missionData.droneId, null);
     io.emit("missionUpdate", mission);
     broadcastState();
     res.json({ ok: true, mission });
@@ -367,6 +734,13 @@ app.put("/api/missions/:id", (req, res) => {
     const existing = missions.find((item) => item.id === id) || db.getMissionById(id);
     if (!existing) {
       return res.status(404).json({ error: "Mission not found" });
+    }
+
+    const candidateWaypoints = updates.waypoints || existing.waypoints || [];
+    const waypointValidation = validateMissionWaypoints(candidateWaypoints);
+    if (!waypointValidation.ok) {
+      pushLog(`Mission ${id} update rejected: waypoint ${waypointValidation.waypointIndex} is inside restricted geofence`, 'warning', existing.droneId || null, null);
+      return res.status(400).json({ error: `Waypoint ${waypointValidation.waypointIndex} is inside a restricted geofence`, zones: waypointValidation.hits });
     }
 
     const updatedMission = { ...existing, ...updates, id };
@@ -481,6 +855,27 @@ app.put("/api/settings/:key", (req, res) => {
 // Start server
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
-server.listen(PORT, HOST, () => {
-  console.log(`Ground Station server running on http://${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    console.log(`Ground Station server running on http://${HOST}:${PORT}`);
+  });
+  setInterval(refreshWeather, 30000);
+  refreshWeather();
+}
+
+module.exports = {
+  app,
+  server,
+  io,
+  haversineMeters,
+  pointInAnyZone,
+  validateGeofencePoint,
+  validateMissionWaypoints,
+  normalizeCommand,
+  buildMavlinkCommandLong,
+  relayCommand,
+  parseHexPacket,
+  decodeMavlinkPacket,
+  getWeather: () => ({ ...weather }),
+  refreshWeather
+};

@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1784230719056,
+    "timestamp": 1784230719056,
+    "message": "Package created: PKG001 for Test Customer",
+    "type": "package",
+    "drone_id": null,
+    "package_id": "PKG001"
+  }
+]

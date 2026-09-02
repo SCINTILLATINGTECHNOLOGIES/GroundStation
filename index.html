@@ -292,6 +292,13 @@ try {
           } else if (pkg.status) {
             updatePackageStatus(pkg.id, pkg.status, false);
           }
+
+          if (pkg.id && pkg.id.startsWith('PKG')) {
+            const num = parseInt(pkg.id.replace('PKG', ''), 10);
+            if (!isNaN(num) && num >= packageIdCounter) {
+              packageIdCounter = num + 1;
+            }
+          }
         });
       }
 
@@ -322,6 +329,9 @@ try {
       if (data && data.settings) {
         applySettings(data.settings);
       }
+      updatePackageList();
+      updateAnalytics();
+      updateStatus();
     });
 
     socket.on('droneUpdate', (drone) => {
@@ -414,25 +424,12 @@ try {
         });
       }
 
-      if (Array.isArray(state.alerts)) {
-        state.alerts.forEach(alert => {
-          if (alert && alert.message) {
-            addAlert(alert.message, alert.type || 'info');
-          }
-        });
-      }
-
-      if (Array.isArray(state.logs)) {
-        state.logs.slice(-8).forEach(log => {
-          if (log && log.message) {
-            addCommLog(log.message, 'system');
-          }
-        });
-      }
-
       if (state.settings) {
         applySettings(state.settings);
       }
+      updatePackageList();
+      updateAnalytics();
+      updateStatus();
     });
 
     socket.on('missionUpdate', (mission) => {
@@ -479,7 +476,6 @@ var droneTrails = {};
 var droneRadar = {};
 var waypoints = [];
 var dronePositions = {};
-var dronePositions = {};
 var droneBattery = {};
 var droneMissions = {};
 var droneReturningHome = {};
@@ -494,6 +490,7 @@ var packageStatuses = {}; // 'queued', 'assigned', 'in_transit', 'delivered', 'f
 var packageDestinations = {};
 var packageAssignments = {}; // droneId -> packageId
 var packageDetails = {}; // packageId -> {description, weight, priority, customer, eta}
+var packageMarkers = {}; // packageId -> map marker
 var deliveryLogs = []; // Track all delivery events
 
 function selectDrone(id){
@@ -589,9 +586,9 @@ async function loadSavedData() {
   let loadedPackages = false;
 
   try {
-    const response = await fetch('/api/packages');
+    const response = await fetch('/api/state');
     const json = await response.json();
-    if (Array.isArray(json.packages) && json.packages.length > 0) {
+    if (json && Array.isArray(json.packages) && json.packages.length > 0) {
       loadedPackages = true;
       json.packages.forEach(pkg => {
         if (!packages.includes(pkg.id)) {
@@ -619,13 +616,7 @@ async function loadSavedData() {
         }
       });
     }
-  } catch (err) {
-    console.warn('Unable to load packages from backend:', err);
-  }
 
-  try {
-    const response = await fetch('/api/missions');
-    const json = await response.json();
     if (Array.isArray(json.missions)) {
       json.missions.forEach(mission => {
         if (mission.droneId && mission.route) {
@@ -634,9 +625,33 @@ async function loadSavedData() {
         }
       });
     }
+
+    if (Array.isArray(json.alerts)) {
+      json.alerts.forEach(alert => {
+        if (alert && alert.message) {
+          addAlert(alert.message, alert.type || 'info');
+        }
+      });
+    }
+
+    if (Array.isArray(json.logs)) {
+      json.logs.slice(-10).forEach(log => {
+        if (log && log.message) {
+          addCommLog(log.message, 'system');
+        }
+      });
+    }
+
+    if (json.settings) {
+      applySettings(json.settings);
+    }
   } catch (err) {
-    console.warn('Unable to load missions from backend:', err);
+    console.warn('Unable to load state from backend:', err);
   }
+
+  updatePackageList();
+  updateAnalytics();
+  updateStatus();
 
   return loadedPackages;
 }
@@ -688,14 +703,6 @@ interactive:false
 }).addTo(map);
 
 });
-
-// Add sample packages after geofence loads
-setTimeout(() => {
-  addPackage(9.1, 8.7, 'Medical supplies', 2, 'high', 'City Hospital');
-  addPackage(9.15, 8.75, 'Food delivery', 1, 'normal', 'Restaurant Chain');
-  addPackage(8.95, 8.85, 'Electronics', 1.5, 'normal', 'Tech Store');
-  addPackage(9.05, 8.65, 'Documents', 0.5, 'urgent', 'Law Firm');
-}, 1000);
 
 });
 
@@ -1302,6 +1309,10 @@ function addPackage(lat, lon, description, weight = 1, priority = 'normal', cust
   if (!packageId) {
     packageId = 'PKG' + packageIdCounter++;
   }
+  if (packages.includes(packageId)) {
+    // Already have this package in the UI
+    return;
+  }
   packages.push(packageId);
   packageStatuses[packageId] = status;
   packageDestinations[packageId] = [lat, lon];
@@ -1317,8 +1328,10 @@ function addPackage(lat, lon, description, weight = 1, priority = 'normal', cust
   // Add visual marker for package destination
   var marker = L.marker([lat, lon]).addTo(map);
   marker.bindPopup('Package ' + packageId + ': ' + description + '<br>Priority: ' + priority + '<br>Customer: ' + customer);
+  packageMarkers[packageId] = marker;
   
   updatePackageList();
+  updateAnalytics();
   logDeliveryEvent('Package created: ' + packageId + ' for ' + customer);
   console.log('Package added:', packageId, 'at', [lat, lon]);
 }
@@ -1416,6 +1429,7 @@ function updatePackageList() {
     
     list.appendChild(item);
   });
+  updateAnalytics();
 }
 
 // Calculate ETA for package delivery
@@ -2318,18 +2332,63 @@ function showMissionDetails() {
   alert(details);
 }
 
-// Weather simulation
+async function sendCommandToServer(command, options = {}) {
+  const payload = {
+    action: command,
+    protocol: options.protocol || 'mavlink',
+    target: options.target || null,
+    targetSystem: options.targetSystem ?? 1,
+    targetComponent: options.targetComponent ?? 1,
+    params: options.params || [],
+    ...options
+  };
+
+  try {
+    const response = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(json.error || 'Command rejected');
+    }
+
+    console.log('Command relayed:', json);
+    return json;
+  } catch (error) {
+    console.warn('Failed to send command:', error);
+    addAlert(`Command ${command} failed: ${error.message}`, 'error');
+    return null;
+  }
+}
+
+function setWeatherFromServer(data) {
+  if (!data) return;
+  document.getElementById('temp').textContent = data.temperature_c ?? '--';
+  document.getElementById('wind').textContent = data.wind_kph ?? '--';
+  document.getElementById('visibility').textContent = data.visibility_km ?? '--';
+  document.getElementById('conditions').textContent = data.condition ?? 'Clear';
+}
+
 function updateWeather() {
-  // Simulate weather data
-  const conditions = ['Sunny', 'Cloudy', 'Rainy', 'Windy', 'Clear'];
-  const temp = Math.round(20 + Math.random() * 15); // 20-35°C
-  const wind = Math.round(Math.random() * 20); // 0-20 km/h
-  const visibility = Math.round(5 + Math.random() * 15); // 5-20 km
-  
-  document.getElementById('temp').textContent = temp;
-  document.getElementById('wind').textContent = wind;
-  document.getElementById('visibility').textContent = visibility;
-  document.getElementById('conditions').textContent = conditions[Math.floor(Math.random() * conditions.length)];
+  fetch('/api/weather')
+    .then((response) => response.ok ? response.json() : Promise.reject(new Error('Weather request failed')))
+    .then((data) => {
+      setWeatherFromServer(data);
+    })
+    .catch(() => {
+      const conditions = ['Sunny', 'Cloudy', 'Rainy', 'Windy', 'Clear'];
+      const temp = Math.round(20 + Math.random() * 15);
+      const wind = Math.round(Math.random() * 20);
+      const visibility = Math.round(5 + Math.random() * 15);
+      const condition = conditions[Math.floor(Math.random() * conditions.length)];
+      document.getElementById('temp').textContent = temp;
+      document.getElementById('wind').textContent = wind;
+      document.getElementById('visibility').textContent = visibility;
+      document.getElementById('conditions').textContent = condition;
+    });
 }
 
 // Alert system
@@ -2450,33 +2509,59 @@ applySettings();
 
 // Emergency controls
 function emergencyStop() {
-  // Stop all drones immediately
   Object.keys(droneMissions).forEach(id => {
     delete droneMissions[id];
   });
   Object.keys(droneReturningHome).forEach(id => {
     droneReturningHome[id] = true;
   });
+
+  sendCommandToServer('LAND', {
+    protocol: 'mavlink',
+    action: 'LAND',
+    target: null,
+    targetSystem: 1,
+    targetComponent: 1,
+    params: [0, 0, 0, 0, 0, 0, 0]
+  });
+
   addAlert('EMERGENCY STOP activated - all drones halting!', 'error');
   playSound('emergency');
   addCommLog('EMERGENCY STOP activated by operator', 'control');
 }
 
 function returnAllHome() {
-  // Send all drones home
   Object.keys(drones).forEach(id => {
     if (home && !droneReturningHome[id]) {
       droneReturningHome[id] = true;
       addAlert(`Drone ${id} returning home`, 'warning');
     }
-  addCommLog('All drones commanded to return home', 'control');
   });
+
+  sendCommandToServer('RTL', {
+    protocol: 'mavlink',
+    action: 'RTL',
+    target: null,
+    targetSystem: 1,
+    targetComponent: 1,
+    params: [0, 0, 0, 0, 0, 0, 0]
+  });
+
+  addCommLog('All drones commanded to return home', 'control');
   playSound('return');
 }
 
 function activateSafeMode() {
-  // Activate safe mode - reduce speeds, increase safety margins
-  droneSpeed = 0.02; // Slower speed
+  droneSpeed = 0.02;
+  sendCommandToServer('SET_MODE', {
+    protocol: 'mavlink',
+    action: 'SET_MODE',
+    mode: 5,
+    target: null,
+    targetSystem: 1,
+    targetComponent: 1,
+    params: [5, 0, 0, 0, 0, 0, 0]
+  });
   addAlert('Safe mode activated - reduced operational parameters', 'warning');
   playSound('safe');
   addCommLog('Safe mode activated - parameters adjusted', 'control');
