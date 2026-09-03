@@ -278,14 +278,38 @@ const weather = {
   updatedAt: Date.now()
 };
 
-function refreshWeather() {
-  const conditions = ['Clear', 'Sunny', 'Cloudy', 'Rainy', 'Windy'];
-  weather.condition = conditions[Math.floor(Math.random() * conditions.length)];
-  weather.temperature_c = Math.round(18 + Math.random() * 16);
-  weather.wind_kph = Math.round(Math.random() * 25);
-  weather.visibility_km = Math.round(5 + Math.random() * 15);
-  weather.updatedAt = Date.now();
-  io.emit('weatherUpdate', { ...weather });
+// Real weather via OpenWeatherMap (free tier). Falls back to holding the
+// last known values (does NOT fabricate data) if the API key is missing
+// or a request fails - see project spec, Section 15.5.
+const HOME_LAT = parseFloat(process.env.HOME_LAT || '9.08');
+const HOME_LON = parseFloat(process.env.HOME_LON || '8.67');
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || '';
+
+async function refreshWeather() {
+  if (!OPENWEATHER_API_KEY) {
+    console.warn('OPENWEATHER_API_KEY not set - weather will not update (holding last known values)');
+    return;
+  }
+
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${HOME_LAT}&lon=${HOME_LON}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error('Weather API request failed:', response.status, response.statusText);
+      return;
+    }
+
+    const data = await response.json();
+    weather.condition = data.weather?.[0]?.main || weather.condition;
+    weather.temperature_c = Math.round(data.main?.temp ?? weather.temperature_c);
+    weather.wind_kph = Math.round((data.wind?.speed ?? 0) * 3.6); // m/s -> km/h
+    weather.visibility_km = Math.round((data.visibility ?? 10000) / 1000);
+    weather.updatedAt = Date.now();
+    io.emit('weatherUpdate', { ...weather });
+  } catch (error) {
+    console.error('Failed to fetch weather:', error.message);
+  }
 }
 
 // Variant A max payload capacity (see project spec, Section 2 / 15.3)
