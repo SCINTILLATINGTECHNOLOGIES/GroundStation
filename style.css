@@ -24,7 +24,7 @@ body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text);
   background: transparent;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #map {
@@ -169,7 +169,7 @@ body {
   min-width: 140px;
   max-width: 190px;
   transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, max-height 0.3s ease;
-  max-height: 24px;
+  max-height: 40px;
   overflow: hidden;
   cursor: pointer;
 }
@@ -429,6 +429,20 @@ body {
   100% { left: 100%; }
 }
 
+/* Accessibility: focus styles for keyboard users */
+button:focus,
+a:focus {
+  outline: 3px solid rgba(79, 70, 229, 0.22);
+  outline-offset: 2px;
+}
+
+/* Respect reduced motion and lower-power devices: disable heavy effects */
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+  * { animation: none !important; transition: none !important; }
+  #cameraView::after { display: none !important; }
+  #topBanner, #dashboardBar, .panel-expanded, .panel-collapsed { backdrop-filter: none !important; }
+}
+
 #telemetry,
 #fleet,
 #fleetStatus,
@@ -561,13 +575,13 @@ b {
 
 button {
   margin: 1px 1px 0 0;
-  padding: 2px 4px;
+  padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent), #2563eb);
   color: #ffffff;
-  font-size: 0.6rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   opacity: 0.95;
@@ -596,8 +610,8 @@ button:active {
   margin: 0;
   flex: 1 1 auto;
   min-width: 50px;
-  padding: 2px 4px;
-  font-size: 0.55rem;
+  padding: 6px 8px;
+  font-size: 0.75rem;
 }
 
 #telemetry,
